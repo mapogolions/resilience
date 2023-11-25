@@ -1,4 +1,4 @@
-package resilience
+package timeout
 
 import (
 	"context"
