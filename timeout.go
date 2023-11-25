@@ -8,14 +8,17 @@ import (
 
 var ErrTimeoutRejected = errors.New("rejected by timeout")
 
-type Fun[T any, R any] func(ctx context.Context, state T) (R, error)
-
-type Result[T any] struct {
+type result[T any] struct {
 	Value T
 	Err   error
 }
 
-func ExecutePessimistic[T any, R any](ctx context.Context, f Fun[T, R], state T, timeout time.Duration) (R, error) {
+func ExecutePessimistic[T any, R any](
+	ctx context.Context,
+	f func(context.Context, T) (R, error),
+	state T,
+	timeout time.Duration,
+) (R, error) {
 	var defaultValue R
 	if ctx.Err() != nil {
 		return defaultValue, ctx.Err()
@@ -23,12 +26,12 @@ func ExecutePessimistic[T any, R any](ctx context.Context, f Fun[T, R], state T,
 	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, timeout)
 	defer timeoutCancel()
 
-	dataCh := func() <-chan Result[R] {
-		ch := make(chan Result[R], 1)
+	dataCh := func() <-chan result[R] {
+		ch := make(chan result[R], 1)
 		go func() {
 			defer close(ch)
 			v, err := f(timeoutCtx, state)
-			ch <- Result[R]{v, err}
+			ch <- result[R]{v, err}
 		}()
 		return ch
 	}()
@@ -47,7 +50,12 @@ func ExecutePessimistic[T any, R any](ctx context.Context, f Fun[T, R], state T,
 	}
 }
 
-func ExecuteOptimistic[T any, R any](ctx context.Context, f Fun[T, R], state T, timeout time.Duration) (R, error) {
+func ExecuteOptimistic[T any, R any](
+	ctx context.Context,
+	f func(context.Context, T) (R, error),
+	state T,
+	timeout time.Duration,
+) (R, error) {
 	var defaultValue R
 	if ctx.Err() != nil {
 		return defaultValue, ctx.Err()
