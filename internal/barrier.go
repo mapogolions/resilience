@@ -7,6 +7,7 @@ import (
 type Barrier struct {
 	cond  *sync.Cond
 	limit int
+	slots int
 }
 
 func NewBarrier(limit int) *Barrier {
@@ -14,13 +15,13 @@ func NewBarrier(limit int) *Barrier {
 		panic("limit should greater than zero")
 	}
 	mutex := sync.Mutex{}
-	return &Barrier{cond: sync.NewCond(&mutex), limit: limit}
+	return &Barrier{cond: sync.NewCond(&mutex), limit: limit, slots: limit}
 }
 
 func (b *Barrier) TryWait() bool {
 	b.cond.L.Lock()
-	if b.limit > 0 {
-		b.limit--
+	if b.slots > 0 {
+		b.slots--
 		b.cond.L.Unlock()
 		return true
 	}
@@ -30,25 +31,25 @@ func (b *Barrier) TryWait() bool {
 
 func (b *Barrier) Wait() {
 	b.cond.L.Lock()
-	if b.limit > 0 {
-		b.limit--
+	if b.slots > 0 {
+		b.slots--
 		b.cond.L.Unlock()
 		return
 	}
 	for {
-		if b.limit > 0 {
+		b.cond.Wait()
+		if b.slots > 0 {
 			break
 		}
-		b.cond.Wait()
 	}
-	b.limit--
+	b.slots--
 	b.cond.L.Unlock()
 }
 
 func (b *Barrier) Release() {
 	b.cond.L.Lock()
-	if b.limit > 0 {
-		b.limit--
+	if b.slots < b.limit {
+		b.slots++
 		b.cond.Broadcast()
 	}
 	b.cond.L.Unlock()
