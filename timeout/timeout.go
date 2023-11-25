@@ -23,7 +23,8 @@ func ExecutePessimistic[T any, R any](
 	if ctx.Err() != nil {
 		return defaultValue, ctx.Err()
 	}
-	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, timeout)
+	deadline := time.Now().Add(timeout)
+	timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
 	defer timeoutCancel()
 
 	dataCh := func() <-chan result[R] {
@@ -41,7 +42,7 @@ func ExecutePessimistic[T any, R any](
 		if result.Err == nil {
 			return result.Value, nil
 		}
-		if errors.Is(result.Err, context.DeadlineExceeded) && exitByTimeout(ctx, timeoutCtx) {
+		if errors.Is(result.Err, context.DeadlineExceeded) && !isInheritParentTimeout(deadline, ctx) {
 			return defaultValue, ErrTimeoutRejected
 		}
 		return defaultValue, result.Err
@@ -60,11 +61,12 @@ func ExecuteOptimistic[T any, R any](
 	if ctx.Err() != nil {
 		return defaultValue, ctx.Err()
 	}
-	timeoutCtx, timeoutCancel := context.WithTimeout(ctx, timeout)
+	deadline := time.Now().Add(timeout)
+	timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
 	defer timeoutCancel()
 	value, err := f(timeoutCtx, state)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) && exitByTimeout(ctx, timeoutCtx) {
+		if errors.Is(err, context.DeadlineExceeded) && !isInheritParentTimeout(deadline, ctx) {
 			return defaultValue, ErrTimeoutRejected
 		}
 		return defaultValue, err
@@ -72,14 +74,7 @@ func ExecuteOptimistic[T any, R any](
 	return value, nil
 }
 
-func exitByTimeout(ctx context.Context, timeoutCtx context.Context) bool {
-	timeoutDeadline, ok := timeoutCtx.Deadline()
-	if !ok {
-		panic("Timeout context should have deadline")
-	}
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		return true
-	}
-	return timeoutDeadline.Before(deadline) || timeoutDeadline.Equal(deadline)
+func isInheritParentTimeout(deadline time.Time, ctx context.Context) bool {
+	parentDeadline, ok := ctx.Deadline()
+	return ok && parentDeadline.Before(deadline)
 }
