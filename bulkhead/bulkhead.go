@@ -10,21 +10,21 @@ import (
 var ErrBulkheadRejected = errors.New("bulkhead rejected")
 
 func Execute[T any, R any](
-	ctx context.Context,
-	f func(context.Context, T) (R, error),
-	state T,
 	concurrency int,
 	queue int,
-) (R, error) {
-	var defaultValue R
+) func(context.Context, func(context.Context, T) (R, error), T) (R, error) {
 	concurrencyBarrier := internal.NewBarrier(concurrency)
 	queueBarrier := internal.NewBarrier(concurrency + queue)
-	if queueBarrier.TryWait() {
-		return defaultValue, ErrBulkheadRejected
+
+	return func(ctx context.Context, f func(context.Context, T) (R, error), state T) (R, error) {
+		var defaultValue R
+		if queueBarrier.TryWait() {
+			return defaultValue, ErrBulkheadRejected
+		}
+		concurrencyBarrier.Wait()
+		value, err := f(ctx, state)
+		concurrencyBarrier.Release()
+		queueBarrier.Release()
+		return value, err
 	}
-	concurrencyBarrier.Wait()
-	value, err := f(ctx, state)
-	concurrencyBarrier.Release()
-	queueBarrier.Release()
-	return value, err
 }
