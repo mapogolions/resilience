@@ -18,7 +18,7 @@ func Execute[T any, R any](
 
 	return func(ctx context.Context, f func(context.Context, T) (R, error), state T) (R, error) {
 		var defaultValue R
-		if queueBarrier.TryWait() {
+		if !queueBarrier.TryWait() {
 			return defaultValue, ErrBulkheadRejected
 		}
 		concurrencyBarrier.Wait()
