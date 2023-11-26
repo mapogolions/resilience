@@ -27,7 +27,6 @@ func TestBulkhead(t *testing.T) {
 			barrier := make(chan struct{})
 			f := func(ctx context.Context, index int) (int, error) {
 				<-barrier
-				// time.Sleep(50 * time.Millisecond)
 				return index, nil
 			}
 			allDone := sync.WaitGroup{}
