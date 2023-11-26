@@ -4,7 +4,9 @@ import (
 	"sync"
 )
 
-// acts like a semaphore
+/*
+Acts as a semaphore with the exception of some features
+*/
 type ConcurrencyLimiter struct {
 	cond        *sync.Cond
 	concurrency int
