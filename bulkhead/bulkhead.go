@@ -9,10 +9,16 @@ import (
 
 var ErrBulkheadRejected = errors.New("bulkhead rejected")
 
-func Execute[T any, R any](
+func NewBulkhead[T any, R any](
 	concurrency int,
 	queue int,
 ) func(context.Context, func(context.Context, T) (R, error), T) (R, error) {
+	if concurrency < 0 {
+		panic("concurrency must be >= 0")
+	}
+	if queue < 0 {
+		panic("queue must be >= 0")
+	}
 	concurrencyLimiter := internal.NewSemaphore(concurrency)
 	queueLimiter := internal.NewSemaphore(concurrency + queue)
 
