@@ -4,21 +4,22 @@ import (
 	"sync"
 )
 
-type Barrier struct {
+// acts like a semaphore
+type ConcurrencyLimiter struct {
 	cond        *sync.Cond
 	concurrency int
 	slots       int
 }
 
-func NewBarrier(concurrency int) *Barrier {
+func NewConcurrencyLimiter(concurrency int) *ConcurrencyLimiter {
 	if concurrency <= 0 {
 		panic("concurrency level should be greater than zero")
 	}
 	mutex := sync.Mutex{}
-	return &Barrier{cond: sync.NewCond(&mutex), concurrency: concurrency, slots: concurrency}
+	return &ConcurrencyLimiter{cond: sync.NewCond(&mutex), concurrency: concurrency, slots: concurrency}
 }
 
-func (b *Barrier) TryWait() bool {
+func (b *ConcurrencyLimiter) TryWait() bool {
 	b.cond.L.Lock()
 	if b.slots > 0 {
 		b.slots--
@@ -29,7 +30,7 @@ func (b *Barrier) TryWait() bool {
 	return false
 }
 
-func (b *Barrier) Wait() {
+func (b *ConcurrencyLimiter) Wait() {
 	b.cond.L.Lock()
 	if b.slots > 0 {
 		b.slots--
@@ -46,7 +47,7 @@ func (b *Barrier) Wait() {
 	b.cond.L.Unlock()
 }
 
-func (b *Barrier) Release() {
+func (b *ConcurrencyLimiter) Release() {
 	b.cond.L.Lock()
 	if b.slots < b.concurrency {
 		b.slots++

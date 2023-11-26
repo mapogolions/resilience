@@ -13,8 +13,8 @@ func Execute[T any, R any](
 	concurrency int,
 	queue int,
 ) func(context.Context, func(context.Context, T) (R, error), T) (R, error) {
-	concurrencyBarrier := internal.NewBarrier(concurrency)
-	queueBarrier := internal.NewBarrier(concurrency + queue)
+	concurrencyBarrier := internal.NewConcurrencyLimiter(concurrency)
+	queueBarrier := internal.NewConcurrencyLimiter(concurrency + queue)
 
 	return func(ctx context.Context, f func(context.Context, T) (R, error), state T) (R, error) {
 		var defaultValue R

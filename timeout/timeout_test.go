@@ -8,7 +8,7 @@ import (
 )
 
 func TestExecuteOptimistic(t *testing.T) {
-	t.Run("should return deadline exceeded error when context inherit deadline from parent context", func(t *testing.T) {
+	t.Run("should return deadline exceeded error when context inherits deadline from parent context", func(t *testing.T) {
 		// Arrange
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 		defer cancel()
@@ -26,7 +26,7 @@ func TestExecuteOptimistic(t *testing.T) {
 				}
 			},
 			10_000,
-			1*time.Hour, // < 200ms => inherit 200 timeout
+			1*time.Hour, // > 200ms => inherit 200ms timeout
 		)
 
 		// Assert
