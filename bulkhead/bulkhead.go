@@ -13,18 +13,18 @@ func Execute[T any, R any](
 	concurrency int,
 	queue int,
 ) func(context.Context, func(context.Context, T) (R, error), T) (R, error) {
-	concurrencyBarrier := internal.NewConcurrencyLimiter(concurrency)
-	queueBarrier := internal.NewConcurrencyLimiter(concurrency + queue)
+	concurrencyLimit := internal.NewConcurrencyLimiter(concurrency)
+	queueLimit := internal.NewConcurrencyLimiter(concurrency + queue)
 
 	return func(ctx context.Context, f func(context.Context, T) (R, error), state T) (R, error) {
 		var defaultValue R
-		if !queueBarrier.TryWait() {
+		if !queueLimit.TryWait() {
 			return defaultValue, ErrBulkheadRejected
 		}
-		concurrencyBarrier.Wait()
+		concurrencyLimit.Wait()
 		value, err := f(ctx, state)
-		concurrencyBarrier.Release()
-		queueBarrier.Release()
+		concurrencyLimit.Release()
+		queueLimit.Release()
 		return value, err
 	}
 }
