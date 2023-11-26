@@ -27,7 +27,7 @@ func TestBulkhead(t *testing.T) {
 			barrier := make(chan struct{})
 			f := func(ctx context.Context, index int) (int, error) {
 				<-barrier
-				time.Sleep(50 * time.Millisecond)
+				// time.Sleep(50 * time.Millisecond)
 				return index, nil
 			}
 			allDone := sync.WaitGroup{}
@@ -38,7 +38,7 @@ func TestBulkhead(t *testing.T) {
 				go func(i int) {
 					defer allDone.Done()
 					if _, cur := runningCounter.Increment(); cur == testCase.total {
-						close(barrier)
+						time.AfterFunc(100*time.Millisecond, func() { close(barrier) })
 					}
 					_, err := bulkhead(context.Background(), f, i)
 					if err != nil {
