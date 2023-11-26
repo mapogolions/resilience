@@ -12,7 +12,7 @@ type Barrier struct {
 
 func NewBarrier(concurrency int) *Barrier {
 	if concurrency <= 0 {
-		panic("limit should greater than zero")
+		panic("concurrency level should be greater than zero")
 	}
 	mutex := sync.Mutex{}
 	return &Barrier{cond: sync.NewCond(&mutex), concurrency: concurrency, slots: concurrency}
