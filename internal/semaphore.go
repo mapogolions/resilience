@@ -1,0 +1,57 @@
+package internal
+
+import (
+	"sync"
+)
+
+type Semaphore struct {
+	cond      *sync.Cond
+	threshold int
+}
+
+func NewSemaphore(threshold int) *Semaphore {
+	if threshold < 0 {
+		panic("semaphore initial value must be >= 0")
+	}
+	mutex := sync.Mutex{}
+	return &Semaphore{cond: sync.NewCond(&mutex), threshold: threshold}
+}
+
+func (b *Semaphore) TryWait() bool {
+	b.cond.L.Lock()
+	if b.threshold > 0 {
+		b.threshold--
+		b.cond.L.Unlock()
+		return true
+	}
+	b.cond.L.Unlock()
+	return false
+}
+
+func (b *Semaphore) Wait() {
+	b.cond.L.Lock()
+	if b.threshold > 0 {
+		b.threshold--
+		b.cond.L.Unlock()
+		return
+	}
+
+	for {
+		b.cond.Wait()
+		if b.threshold > 0 {
+			break
+		}
+	}
+	b.threshold--
+	b.cond.L.Unlock()
+}
+
+func (b *Semaphore) Release() {
+	b.cond.L.Lock()
+	v := b.threshold
+	b.threshold++
+	if v == 0 { // or b.threshold == 1
+		b.cond.Broadcast()
+	}
+	b.cond.L.Unlock()
+}
