@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestExecutePessimistic(t *testing.T) {
+func TestPessimisticTimeout(t *testing.T) {
 	t.Run("should not block the flow for an indefinite period of time when user ignore context", func(t *testing.T) {
 		// It is the main difference between `Pessimistic` and `Optimisitic` scenarios. Don't rely on callers
 		// Arrange
@@ -54,7 +54,7 @@ func TestExecutePessimistic(t *testing.T) {
 	})
 }
 
-func TestExecuteOptimistic(t *testing.T) {
+func TestOptimisticTimeout(t *testing.T) {
 	t.Run("should return deadline exceeded error when context inherits deadline from parent context", func(t *testing.T) {
 		// Arrange
 		ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
