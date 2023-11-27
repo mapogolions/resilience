@@ -38,6 +38,8 @@ func ExecutePessimistic[T any, R any](
 	}()
 
 	select {
+	case <-timeoutCtx.Done():
+		return defaultValue, ErrTimeoutRejected
 	case result := <-dataCh:
 		if result.Err == nil {
 			return result.Value, nil
@@ -46,8 +48,6 @@ func ExecutePessimistic[T any, R any](
 			return defaultValue, ErrTimeoutRejected
 		}
 		return defaultValue, result.Err
-	case <-timeoutCtx.Done():
-		return defaultValue, ErrTimeoutRejected
 	}
 }
 

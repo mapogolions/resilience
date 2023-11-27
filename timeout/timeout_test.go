@@ -7,6 +7,53 @@ import (
 	"time"
 )
 
+func TestExecutePessimistic(t *testing.T) {
+	t.Run("should not block the flow for an indefinite period of time when user ignore context", func(t *testing.T) {
+		// It is the main difference between `Pessimistic` and `Optimisitic` scenarios. Don't rely on callers
+		// Arrange
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// Act
+		_, err := ExecutePessimistic[string, int](
+			ctx,
+			func(ctx context.Context, s string) (int, error) {
+				// ignore context. Does not monitor cancellation
+				time.Sleep(1 * time.Hour)
+				return len(s), nil
+			},
+			"foo",
+			100*time.Millisecond,
+		)
+
+		// Assert
+		if !errors.Is(err, ErrTimeoutRejected) {
+			t.Fail()
+		}
+	})
+
+	t.Run("should return error when passed context has already been cancelled", func(t *testing.T) {
+		// Act
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		// Arrange
+		_, err := ExecutePessimistic[string, int](
+			ctx,
+			func(ctx context.Context, s string) (int, error) {
+				return len(s), nil
+			},
+			"foo",
+			1*time.Hour,
+		)
+
+		// Assert
+		if !errors.Is(err, context.Canceled) {
+			t.Fail()
+		}
+	})
+}
+
 func TestExecuteOptimistic(t *testing.T) {
 	t.Run("should return deadline exceeded error when context inherits deadline from parent context", func(t *testing.T) {
 		// Arrange
