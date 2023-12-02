@@ -28,12 +28,3 @@ func (predicates ErrorPredicates) AnyMatch(err error) bool {
 	}
 	return false
 }
-
-type PolicyBuilder[T any] struct {
-	resultPredicates ResultPredicates[T]
-	errorPredicates  ErrorPredicates
-}
-
-func NewPolicyBuilder[T any]() PolicyBuilder[T] {
-	return PolicyBuilder[T]{}
-}
