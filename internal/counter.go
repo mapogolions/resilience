@@ -1,34 +1,27 @@
 package internal
 
-import "sync"
+import (
+	"sync/atomic"
+)
 
 type Counter struct {
-	mutex *sync.Mutex
-	value int
+	value atomic.Int64
 }
 
 func NewCounter() *Counter {
-	return &Counter{mutex: &sync.Mutex{}}
+	return &Counter{value: atomic.Int64{}}
 }
 
-func (c *Counter) Value() int {
-	return c.value
+func (c *Counter) Value() int64 {
+	return c.value.Load()
 }
 
-func (c *Counter) Increment() (int, int) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	prev := c.value
-	c.value++
-	cur := c.value
-	return prev, cur
+func (c *Counter) Increment() int64 {
+	cur := c.value.Add(1)
+	return cur
 }
 
-func (c *Counter) Decrement() (int, int) {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	prev := c.value
-	c.value--
-	cur := c.value
-	return prev, cur
+func (c *Counter) Decrement() int64 {
+	cur := c.value.Add(-1)
+	return cur
 }

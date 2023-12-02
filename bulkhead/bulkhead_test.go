@@ -36,7 +36,7 @@ func TestBulkhead(t *testing.T) {
 			for i := 0; i < testCase.total; i++ {
 				go func(i int) {
 					defer allDone.Done()
-					if _, cur := runningCounter.Increment(); cur == testCase.total {
+					if cur := runningCounter.Increment(); cur == int64(testCase.total) {
 						time.AfterFunc(100*time.Millisecond, func() { close(barrier) })
 					}
 					_, err := bulkhead(context.Background(), f, i)
@@ -47,7 +47,7 @@ func TestBulkhead(t *testing.T) {
 			}
 			allDone.Wait()
 
-			if errorCounter.Value() != testCase.expectedErrors {
+			if errorCounter.Value() != int64(testCase.expectedErrors) {
 				t.Fail()
 			}
 		}
