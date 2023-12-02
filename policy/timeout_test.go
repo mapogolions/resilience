@@ -1,4 +1,4 @@
-package timeout
+package policy
 
 import (
 	"context"

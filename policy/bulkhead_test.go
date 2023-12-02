@@ -1,4 +1,4 @@
-package bulkhead
+package policy
 
 import (
 	"context"
