@@ -13,26 +13,47 @@ type result[T any] struct {
 	Err   error
 }
 
-func ExecutePessimistic[T any, R any](
-	ctx context.Context,
-	f func(context.Context, T) (R, error),
-	state T,
-	timeout time.Duration,
-) (R, error) {
-	var defaultValue R
+type TimeoutPolicyKind int
+
+const (
+	OptimisticTimeoutPolicy  TimeoutPolicyKind = 0
+	PessimisticTimeoutPolicy TimeoutPolicyKind = 1
+)
+
+type TimeoutPolicy[S any, T any] struct {
+	timeout time.Duration
+	kind    TimeoutPolicyKind
+}
+
+func NewTimeoutPolicy[S any, T any](timeout time.Duration, kind TimeoutPolicyKind) *TimeoutPolicy[S, T] {
+	return &TimeoutPolicy[S, T]{timeout: timeout, kind: kind}
+}
+
+func (p *TimeoutPolicy[S, T]) Apply(ctx context.Context, f func(context.Context, S) (T, error), state S) (T, error) {
+	if p.kind == OptimisticTimeoutPolicy {
+		return p.applyOptimistic(ctx, f, state)
+	}
+	return p.applyPessimistic(ctx, f, state)
+}
+
+func (p *TimeoutPolicy[S, T]) applyPessimistic(ctx context.Context, f func(context.Context, S) (T, error), state S) (T, error) {
+	if p.kind == OptimisticTimeoutPolicy {
+		panic("should be pessimistic")
+	}
+	var defaultValue T
 	if ctx.Err() != nil {
 		return defaultValue, ctx.Err()
 	}
-	deadline := time.Now().Add(timeout)
+	deadline := time.Now().Add(p.timeout)
 	timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
 	defer timeoutCancel()
 
-	dataCh := func() <-chan result[R] {
-		ch := make(chan result[R], 1)
+	dataCh := func() <-chan result[T] {
+		ch := make(chan result[T], 1)
 		go func() {
 			defer close(ch)
 			v, err := f(timeoutCtx, state)
-			ch <- result[R]{v, err}
+			ch <- result[T]{v, err}
 		}()
 		return ch
 	}()
@@ -51,17 +72,15 @@ func ExecutePessimistic[T any, R any](
 	}
 }
 
-func ExecuteOptimistic[T any, R any](
-	ctx context.Context,
-	f func(context.Context, T) (R, error),
-	state T,
-	timeout time.Duration,
-) (R, error) {
-	var defaultValue R
+func (p *TimeoutPolicy[S, T]) applyOptimistic(ctx context.Context, f func(context.Context, S) (T, error), state S) (T, error) {
+	if p.kind == PessimisticTimeoutPolicy {
+		panic("should be optimistic")
+	}
+	var defaultValue T
 	if ctx.Err() != nil {
 		return defaultValue, ctx.Err()
 	}
-	deadline := time.Now().Add(timeout)
+	deadline := time.Now().Add(p.timeout)
 	timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
 	defer timeoutCancel()
 	value, err := f(timeoutCtx, state)

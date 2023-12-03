@@ -23,7 +23,7 @@ func TestBulkhead(t *testing.T) {
 			{concurrency: 4, queue: 1, total: 5, expectedErrors: 0},
 		}
 		for _, testCase := range testCases {
-			bulkhead := NewBulkhead[int, int](testCase.concurrency, testCase.queue)
+			policy := NewBulkheadPolicy[int, int](testCase.concurrency, testCase.queue)
 			barrier := make(chan struct{})
 			f := func(ctx context.Context, index int) (int, error) {
 				<-barrier
@@ -39,7 +39,7 @@ func TestBulkhead(t *testing.T) {
 					if cur := runningCounter.Increment(); cur == int64(testCase.total) {
 						time.AfterFunc(100*time.Millisecond, func() { close(barrier) })
 					}
-					_, err := bulkhead(context.Background(), f, i)
+					_, err := policy.Apply(context.Background(), f, i)
 					if err != nil {
 						errorCounter.Increment()
 					}
