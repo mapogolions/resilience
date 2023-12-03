@@ -29,14 +29,14 @@ func NewTimeoutPolicy[S any, T any](timeout time.Duration, kind TimeoutPolicyKin
 	return &TimeoutPolicy[S, T]{timeout: timeout, kind: kind}
 }
 
-func (p *TimeoutPolicy[S, T]) Apply(ctx context.Context, f func(context.Context, S) (T, error), state S) (T, error) {
+func (p *TimeoutPolicy[S, T]) Apply(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 	if p.kind == OptimisticTimeoutPolicy {
-		return p.applyOptimistic(ctx, f, state)
+		return p.applyOptimistic(ctx, f, s)
 	}
-	return p.applyPessimistic(ctx, f, state)
+	return p.applyPessimistic(ctx, f, s)
 }
 
-func (p *TimeoutPolicy[S, T]) applyPessimistic(ctx context.Context, f func(context.Context, S) (T, error), state S) (T, error) {
+func (p *TimeoutPolicy[S, T]) applyPessimistic(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 	if p.kind == OptimisticTimeoutPolicy {
 		panic("should be pessimistic")
 	}
@@ -52,7 +52,7 @@ func (p *TimeoutPolicy[S, T]) applyPessimistic(ctx context.Context, f func(conte
 		ch := make(chan result[T], 1)
 		go func() {
 			defer close(ch)
-			v, err := f(timeoutCtx, state)
+			v, err := f(timeoutCtx, s)
 			ch <- result[T]{v, err}
 		}()
 		return ch
@@ -72,7 +72,7 @@ func (p *TimeoutPolicy[S, T]) applyPessimistic(ctx context.Context, f func(conte
 	}
 }
 
-func (p *TimeoutPolicy[S, T]) applyOptimistic(ctx context.Context, f func(context.Context, S) (T, error), state S) (T, error) {
+func (p *TimeoutPolicy[S, T]) applyOptimistic(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 	if p.kind == PessimisticTimeoutPolicy {
 		panic("should be optimistic")
 	}
@@ -83,7 +83,7 @@ func (p *TimeoutPolicy[S, T]) applyOptimistic(ctx context.Context, f func(contex
 	deadline := time.Now().Add(p.timeout)
 	timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
 	defer timeoutCancel()
-	value, err := f(timeoutCtx, state)
+	value, err := f(timeoutCtx, s)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) && !isInheritParentTimeout(deadline, ctx) {
 			return defaultValue, ErrTimeoutRejected

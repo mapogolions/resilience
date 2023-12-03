@@ -16,13 +16,13 @@ type BulkheadPolicy[S any, T any] struct {
 	queueLimiter       *internal.Semaphore
 }
 
-func (p *BulkheadPolicy[S, T]) Apply(ctx context.Context, f func(context.Context, S) (T, error), state S) (T, error) {
+func (p *BulkheadPolicy[S, T]) Apply(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 	var defaultValue T
 	if !p.queueLimiter.TryWait() {
 		return defaultValue, ErrBulkheadRejected
 	}
 	p.concurrencyLimiter.Wait()
-	value, err := f(ctx, state)
+	value, err := f(ctx, s)
 	p.concurrencyLimiter.Release()
 	p.queueLimiter.Release()
 	return value, err
