@@ -7,7 +7,7 @@ import (
 )
 
 type FallbackPolicy[S any, T any] func(context.Context, func(context.Context, S) (T, error), S) (T, error)
-type Fallback[T any] func(context.Context, resilience.DelegateResult[T]) (T, error)
+type Fallback[T any] func(context.Context, resilience.PolicyOutcome[T]) (T, error)
 
 func NewFallbackPolicy[S any, T any](
 	fallback Fallback[T],
@@ -17,13 +17,13 @@ func NewFallbackPolicy[S any, T any](
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		result, err := f(ctx, s)
 		if err != nil {
-			if errorPredicates.AnyMatch(err) {
-				return fallback(ctx, resilience.DelegateResult[T]{Err: err})
+			if errorPredicates.Any(err) {
+				return fallback(ctx, resilience.PolicyOutcome[T]{Err: err})
 			}
 			return result, err
 		}
-		if resultPredicates.AnyMatch(result) {
-			return fallback(ctx, resilience.DelegateResult[T]{Result: result})
+		if resultPredicates.Any(result) {
+			return fallback(ctx, resilience.PolicyOutcome[T]{Result: result})
 		}
 		return result, err
 	}
