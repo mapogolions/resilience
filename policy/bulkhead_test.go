@@ -39,7 +39,7 @@ func TestBulkhead(t *testing.T) {
 					if cur := runningCounter.Increment(); cur == int64(testCase.total) {
 						time.AfterFunc(100*time.Millisecond, func() { close(barrier) })
 					}
-					_, err := policy.Apply(context.Background(), f, i)
+					_, err := policy(context.Background(), f, i)
 					if err != nil {
 						errorCounter.Increment()
 					}

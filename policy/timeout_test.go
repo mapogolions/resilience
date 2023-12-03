@@ -16,7 +16,7 @@ func TestPessimisticTimeout(t *testing.T) {
 		defer cancel()
 
 		// Act
-		_, err := policy.Apply(
+		_, err := policy(
 			ctx,
 			func(ctx context.Context, s string) (int, error) {
 				// ignore context. Does not monitor cancellation
@@ -39,7 +39,7 @@ func TestPessimisticTimeout(t *testing.T) {
 		cancel()
 
 		// Arrange
-		_, err := policy.Apply(
+		_, err := policy(
 			ctx,
 			func(ctx context.Context, s string) (int, error) {
 				return len(s), nil
@@ -62,7 +62,7 @@ func TestOptimisticTimeout(t *testing.T) {
 		defer cancel()
 
 		// Act
-		_, err := policy.Apply(
+		_, err := policy(
 			ctx,
 			func(ctx context.Context, n int) (int, error) {
 				for {
@@ -89,7 +89,7 @@ func TestOptimisticTimeout(t *testing.T) {
 		defer cancel()
 
 		// Act
-		_, err := policy.Apply(
+		_, err := policy(
 			ctx,
 			func(ctx context.Context, n int) (int, error) {
 				for {
@@ -116,7 +116,7 @@ func TestOptimisticTimeout(t *testing.T) {
 		defer cancel()
 
 		// Act
-		result, err := policy.Apply(
+		result, err := policy(
 			ctx,
 			func(ctx context.Context, n int) (int, error) {
 				for {
@@ -143,7 +143,7 @@ func TestOptimisticTimeout(t *testing.T) {
 		cancel()
 
 		// Act
-		_, err := policy.Apply(
+		_, err := policy(
 			ctx,
 			func(ctx context.Context, s string) (int, error) {
 				return len(s), nil

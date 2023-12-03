@@ -20,77 +20,68 @@ const (
 	PessimisticTimeoutPolicy TimeoutPolicyKind = 1
 )
 
-type TimeoutPolicy[S any, T any] struct {
-	timeout time.Duration
-	kind    TimeoutPolicyKind
+type TimeoutPolicy[S any, T any] func(context.Context, func(context.Context, S) (T, error), S) (T, error)
+
+func NewTimeoutPolicy[S any, T any](timeout time.Duration, kind TimeoutPolicyKind) TimeoutPolicy[S, T] {
+	if kind == OptimisticTimeoutPolicy {
+		return newOptimisticTimeoutPolicy[S, T](timeout)
+	}
+	return newPessimisticTimeoutPolicy[S, T](timeout)
 }
 
-func NewTimeoutPolicy[S any, T any](timeout time.Duration, kind TimeoutPolicyKind) *TimeoutPolicy[S, T] {
-	return &TimeoutPolicy[S, T]{timeout: timeout, kind: kind}
-}
+func newPessimisticTimeoutPolicy[S any, T any](timeout time.Duration) TimeoutPolicy[S, T] {
+	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
+		var defaultValue T
+		if ctx.Err() != nil {
+			return defaultValue, ctx.Err()
+		}
+		deadline := time.Now().Add(timeout)
+		timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
+		defer timeoutCancel()
 
-func (p *TimeoutPolicy[S, T]) Apply(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-	if p.kind == OptimisticTimeoutPolicy {
-		return p.applyOptimistic(ctx, f, s)
-	}
-	return p.applyPessimistic(ctx, f, s)
-}
-
-func (p *TimeoutPolicy[S, T]) applyPessimistic(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-	if p.kind == OptimisticTimeoutPolicy {
-		panic("should be pessimistic")
-	}
-	var defaultValue T
-	if ctx.Err() != nil {
-		return defaultValue, ctx.Err()
-	}
-	deadline := time.Now().Add(p.timeout)
-	timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
-	defer timeoutCancel()
-
-	dataCh := func() <-chan result[T] {
-		ch := make(chan result[T], 1)
-		go func() {
-			defer close(ch)
-			v, err := f(timeoutCtx, s)
-			ch <- result[T]{v, err}
+		dataCh := func() <-chan result[T] {
+			ch := make(chan result[T], 1)
+			go func() {
+				defer close(ch)
+				v, err := f(timeoutCtx, s)
+				ch <- result[T]{v, err}
+			}()
+			return ch
 		}()
-		return ch
-	}()
 
-	select {
-	case <-timeoutCtx.Done():
-		return defaultValue, ErrTimeoutRejected
-	case result := <-dataCh:
-		if result.Err == nil {
-			return result.Value, nil
-		}
-		if errors.Is(result.Err, context.DeadlineExceeded) && !isInheritParentTimeout(deadline, ctx) {
+		select {
+		case <-timeoutCtx.Done():
 			return defaultValue, ErrTimeoutRejected
+		case result := <-dataCh:
+			if result.Err == nil {
+				return result.Value, nil
+			}
+			if errors.Is(result.Err, context.DeadlineExceeded) && !isInheritParentTimeout(deadline, ctx) {
+				return defaultValue, ErrTimeoutRejected
+			}
+			return defaultValue, result.Err
 		}
-		return defaultValue, result.Err
 	}
 }
 
-func (p *TimeoutPolicy[S, T]) applyOptimistic(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-	if p.kind == PessimisticTimeoutPolicy {
-		panic("should be optimistic")
-	}
-	var defaultValue T
-	if ctx.Err() != nil {
-		return defaultValue, ctx.Err()
-	}
-	deadline := time.Now().Add(p.timeout)
-	timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
-	defer timeoutCancel()
-	value, err := f(timeoutCtx, s)
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) && !isInheritParentTimeout(deadline, ctx) {
-			return defaultValue, ErrTimeoutRejected
+func newOptimisticTimeoutPolicy[S any, T any](timeout time.Duration) TimeoutPolicy[S, T] {
+	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
+		var defaultValue T
+		if ctx.Err() != nil {
+			return defaultValue, ctx.Err()
 		}
-		return defaultValue, err
+		deadline := time.Now().Add(timeout)
+		timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
+		defer timeoutCancel()
+		value, err := f(timeoutCtx, s)
+		if err != nil {
+			if errors.Is(err, context.DeadlineExceeded) && !isInheritParentTimeout(deadline, ctx) {
+				return defaultValue, ErrTimeoutRejected
+			}
+			return defaultValue, err
+		}
+		return value, nil
 	}
-	return value, nil
 }
 
 func isInheritParentTimeout(deadline time.Time, ctx context.Context) bool {
