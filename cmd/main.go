@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mapogolions/resilience/timeout"
+	"github.com/mapogolions/resilience/policy"
 )
 
 func main() {
 	f := func(ctx context.Context, state string) (int, error) {
 		return len(state), nil
 	}
-	result, err := timeout.ExecuteOptimistic[string, int](context.Background(), f, "foo", 2*time.Second)
+	timeout := policy.NewTimeoutPolicy[string, int](2*time.Second, policy.OptimisticTimeoutPolicy)
+	result, err := timeout(context.Background(), f, "foo")
 	if err != nil {
 		panic(err)
 	}
