@@ -12,8 +12,8 @@ var ErrBulkheadRejected = errors.New("bulkhead rejected")
 type BulkheadPolicy[S any, T any] func(context.Context, func(context.Context, S) (T, error), S) (T, error)
 
 func NewBulkheadPolicy[S any, T any](concurrency int, queue int) BulkheadPolicy[S, T] {
-	if concurrency < 0 {
-		panic("concurrency must be >= 0")
+	if concurrency < 1 {
+		panic("concurrency must be > 0")
 	}
 	if queue < 0 {
 		panic("queue must be >= 0")
