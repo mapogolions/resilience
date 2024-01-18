@@ -16,11 +16,8 @@ type lockFreeRateLimiter struct {
 func NewLockFreeRateLimiter(tokenPerUnit time.Duration, capacity int64, timeProvider TimeProvider) lockFreeRateLimiter {
 	freeTokens := atomic.Int64{}
 	freeTokens.Store(capacity)
-
 	tokenGenTime := atomic.Int64{}
-	utcNow := timeProvider.UtcNow()
-	tokenGenTime.Store(utcNow.UnixMicro() + tokenPerUnit.Microseconds())
-
+	tokenGenTime.Store(timeProvider.UtcNow().UnixMicro() + tokenPerUnit.Microseconds())
 	return lockFreeRateLimiter{
 		freeTokens:   &freeTokens,
 		tokenGenTime: &tokenGenTime,
@@ -31,7 +28,7 @@ func NewLockFreeRateLimiter(tokenPerUnit time.Duration, capacity int64, timeProv
 }
 
 func (rl lockFreeRateLimiter) Try() (bool, time.Duration) {
-	tokenPerUnitMicrosec := rl.tokenPerUnit.Microseconds()
+	tokenPerUnitMicro := rl.tokenPerUnit.Microseconds()
 	for {
 		restTokens := rl.freeTokens.Add(-1)
 		if restTokens >= 0 {
@@ -43,13 +40,13 @@ func (rl lockFreeRateLimiter) Try() (bool, time.Duration) {
 		if delta < 0 {
 			return false, time.Duration(-delta)
 		}
-		growth := 1 + delta/tokenPerUnitMicrosec
+		growth := 1 + delta/tokenPerUnitMicro
 		tokens := minInt64(rl.capacity, growth)
 		var nextTokenGenTime int64
 		if tokens < rl.capacity {
-			nextTokenGenTime = curTokenGenTime + tokens + tokenPerUnitMicrosec
+			nextTokenGenTime = curTokenGenTime + tokens*tokenPerUnitMicro
 		} else {
-			nextTokenGenTime = now + tokenPerUnitMicrosec
+			nextTokenGenTime = now + tokenPerUnitMicro
 		}
 		if rl.tokenGenTime.CompareAndSwap(curTokenGenTime, nextTokenGenTime) {
 			// give one token to the winner
