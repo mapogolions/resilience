@@ -10,10 +10,15 @@ import (
 var ErrRateLimitRejected = errors.New("rate limit rejected")
 
 type RateLimitPolicy[S any, T any] func(context.Context, func(context.Context, S) (T, error), S) (T, error)
+type RateLimiter func() (bool, time.Duration)
 
 func NewRateLimitPolicy[S any, T any](tokenPerUnit time.Duration, capacity int64) RateLimitPolicy[S, T] {
-	var defaultT T
 	rateLimiter := newRateLimiter(tokenPerUnit, capacity)
+	return NewRateLimitPolicyWith[S, T](rateLimiter)
+}
+
+func NewRateLimitPolicyWith[S any, T any](rateLimiter RateLimiter) RateLimitPolicy[S, T] {
+	var defaultT T
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		if ok, _ := rateLimiter(); ok {
 			return defaultT, ErrRateLimitRejected
@@ -22,9 +27,7 @@ func NewRateLimitPolicy[S any, T any](tokenPerUnit time.Duration, capacity int64
 	}
 }
 
-type rateLimiter func() (bool, time.Duration)
-
-func newRateLimiter(tokenPerUnit time.Duration, capacity int64) rateLimiter {
+func newRateLimiter(tokenPerUnit time.Duration, capacity int64) RateLimiter {
 	tokenPerUnitMicrosec := tokenPerUnit.Microseconds()
 	var freeTokens atomic.Int64
 	freeTokens.Store(capacity)
