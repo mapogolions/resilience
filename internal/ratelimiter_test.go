@@ -76,7 +76,7 @@ func TestRateLimiter(t *testing.T) {
 		}
 	})
 
-	t.Run("shoul permit execution when next token generation has arrived", func(t *testing.T) {
+	t.Run("should permit execution if it is time to generate next token", func(t *testing.T) {
 		tokenPerUnit := 10 * time.Millisecond
 		rateLimiter := NewLockFreeRateLimiter(tokenPerUnit, 0, DefaultTimeProvider)
 		time.Sleep(tokenPerUnit)
