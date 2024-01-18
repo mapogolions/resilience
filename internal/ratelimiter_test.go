@@ -64,7 +64,7 @@ func TestRateLimiter(t *testing.T) {
 		}
 	})
 
-	t.Run("should descrease free tokens on each call", func(t *testing.T) {
+	t.Run("should descrease free tokens on each try", func(t *testing.T) {
 		rateLimiter := NewLockFreeRateLimiter(1*time.Second, 2, DefaultTimeProvider)
 		rateLimiter.Try()
 		if rateLimiter.freeTokens.Load() != 1 {
