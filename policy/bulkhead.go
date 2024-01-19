@@ -4,14 +4,13 @@ import (
 	"context"
 	"errors"
 
+	"github.com/mapogolions/resilience"
 	"github.com/mapogolions/resilience/internal"
 )
 
 var ErrBulkheadRejected = errors.New("bulkhead rejected")
 
-type BulkheadPolicy[S any, T any] func(context.Context, func(context.Context, S) (T, error), S) (T, error)
-
-func NewBulkheadPolicy[S any, T any](concurrency int, queue int) BulkheadPolicy[S, T] {
+func NewBulkheadPolicy[S any, T any](concurrency int, queue int) resilience.Policy[S, T] {
 	if concurrency < 1 {
 		panic("concurrency must be > 0")
 	}

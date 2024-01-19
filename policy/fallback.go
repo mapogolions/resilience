@@ -6,14 +6,13 @@ import (
 	"github.com/mapogolions/resilience"
 )
 
-type FallbackPolicy[S any, T any] func(context.Context, func(context.Context, S) (T, error), S) (T, error)
 type Fallback[T any] func(context.Context, resilience.PolicyOutcome[T]) (T, error)
 
 func NewFallbackPolicy[S any, T any](
 	fallback Fallback[T],
 	resultPredicates resilience.ResultPredicates[T],
 	errorPredicates resilience.ErrorPredicates,
-) FallbackPolicy[S, T] {
+) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		result, err := f(ctx, s)
 		if err != nil {
