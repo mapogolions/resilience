@@ -10,10 +10,10 @@ type lockFreeRateLimiter struct {
 	tokenGenTime *atomic.Int64
 	capacity     int64
 	tokenPerUnit time.Duration
-	timeProvider TimeProvider
+	timeProvider timeProvider
 }
 
-func NewLockFreeRateLimiter(tokenPerUnit time.Duration, capacity int64, timeProvider TimeProvider) lockFreeRateLimiter {
+func NewLockFreeRateLimiter(tokenPerUnit time.Duration, capacity int64, timeProvider timeProvider) lockFreeRateLimiter {
 	freeTokens := atomic.Int64{}
 	freeTokens.Store(capacity)
 	tokenGenTime := atomic.Int64{}

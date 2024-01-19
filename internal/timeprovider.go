@@ -2,17 +2,17 @@ package internal
 
 import "time"
 
-type TimeProvider interface {
+type timeProvider interface {
 	UtcNow() time.Time
 }
 
-type TimeProviderFunc func() time.Time
+type timeProviderFunc func() time.Time
 
-func (f TimeProviderFunc) UtcNow() time.Time {
+func (f timeProviderFunc) UtcNow() time.Time {
 	return f()
 }
 
-var DefaultTimeProvider TimeProviderFunc = func() time.Time {
+var DefaultTimeProvider timeProviderFunc = func() time.Time {
 	return time.Now().UTC()
 }
 

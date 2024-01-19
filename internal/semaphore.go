@@ -4,20 +4,20 @@ import (
 	"sync"
 )
 
-type Semaphore struct {
+type semaphore struct {
 	cond      *sync.Cond
 	threshold int
 }
 
-func NewSemaphore(threshold int) *Semaphore {
+func NewSemaphore(threshold int) *semaphore {
 	if threshold < 0 {
 		panic("semaphore initial value must be >= 0")
 	}
 	mutex := sync.Mutex{}
-	return &Semaphore{cond: sync.NewCond(&mutex), threshold: threshold}
+	return &semaphore{cond: sync.NewCond(&mutex), threshold: threshold}
 }
 
-func (b *Semaphore) TryWait() bool {
+func (b *semaphore) TryWait() bool {
 	b.cond.L.Lock()
 	if b.threshold > 0 {
 		b.threshold--
@@ -28,7 +28,7 @@ func (b *Semaphore) TryWait() bool {
 	return false
 }
 
-func (b *Semaphore) Wait() {
+func (b *semaphore) Wait() {
 	b.cond.L.Lock()
 	if b.threshold > 0 {
 		b.threshold--
@@ -46,7 +46,7 @@ func (b *Semaphore) Wait() {
 	b.cond.L.Unlock()
 }
 
-func (b *Semaphore) Release() {
+func (b *semaphore) Release() {
 	b.cond.L.Lock()
 	v := b.threshold
 	b.threshold++
