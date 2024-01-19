@@ -28,9 +28,7 @@ func NewPanicFallbackPolicy[S any, T any](fallback Fallback[T]) resilience.Polic
 			var crucialErr error
 			var result T
 			var err error
-			tryCatch(func() {
-				result, err = f(ctx, s)
-			}, &crucialErr)
+			tryCatch(func() { result, err = f(ctx, s) }, &crucialErr)
 			if crucialErr != nil {
 				return result, crucialErr
 			}
