@@ -12,6 +12,10 @@ type PolicyOutcome[T any] struct {
 type ResultPredicate[T any] func(T) bool
 type ResultPredicates[T any] []ResultPredicate[T]
 
+func NewResultPredicates[T any](predicates ...ResultPredicate[T]) ResultPredicates[T] {
+	return predicates
+}
+
 func (predicates ResultPredicates[T]) Any(result T) bool {
 	for _, pred := range predicates {
 		if pred(result) {
@@ -23,6 +27,10 @@ func (predicates ResultPredicates[T]) Any(result T) bool {
 
 type ErrorPredicate func(error) bool
 type ErrorPredicates []ErrorPredicate
+
+func NewErrorPredicates(predicats ...ErrorPredicate) ErrorPredicates {
+	return predicats
+}
 
 func (predicates ErrorPredicates) Any(err error) bool {
 	for _, pred := range predicates {

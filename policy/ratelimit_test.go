@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func TestRateLimitPolicy(t *testing.T) {
+func TestRateLimit(t *testing.T) {
 	t.Run("should reject execution and return error when there is no free token", func(t *testing.T) {
 		// Arrange
 		ctx := context.Background()

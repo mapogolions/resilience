@@ -10,42 +10,32 @@ import (
 
 type Fallback[T any] func(context.Context, resilience.PolicyOutcome[T]) (T, error)
 
-func NewFallbackPolicy[S any, T any](
-	fallback Fallback[T],
-	resultPredicates resilience.ResultPredicates[T],
-	errorPredicates resilience.ErrorPredicates,
-) resilience.Policy[S, T] {
+func IdentityFallback[T any](ctx context.Context, outcome resilience.PolicyOutcome[T]) (T, error) {
+	return outcome.Result, outcome.Err
+}
+
+func NewFallbackPolicy[S any, T any](fallback Fallback[T]) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		result, err := f(ctx, s)
-		if err != nil {
-			if errorPredicates.Any(err) {
-				return fallback(ctx, resilience.PolicyOutcome[T]{Err: err})
-			}
-			return result, err
-		}
-		if resultPredicates.Any(result) {
-			return fallback(ctx, resilience.PolicyOutcome[T]{Result: result})
-		}
-		return result, err
+		return fallback(ctx, resilience.PolicyOutcome[T]{Result: result, Err: err})
 	}
 }
 
-func NewPanicFallbackPolicy[S any, T any](
-	fallback Fallback[T],
-	resultPredicates resilience.ResultPredicates[T],
-	errorPredicates resilience.ErrorPredicates,
-) resilience.Policy[S, T] {
+func NewPanicFallbackPolicy[S any, T any](fallback Fallback[T]) resilience.Policy[S, T] {
+	policy := NewFallbackPolicy[S, T](fallback)
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-		var crucialErr error
-		var result T
-		var err error
-		tryCatch(func() {
-			result, err = f(ctx, s)
-		}, &crucialErr)
-		if crucialErr != nil {
-			return result, crucialErr
-		}
-		return result, err
+		return policy(ctx, func(ctx context.Context, s S) (T, error) {
+			var crucialErr error
+			var result T
+			var err error
+			tryCatch(func() {
+				result, err = f(ctx, s)
+			}, &crucialErr)
+			if crucialErr != nil {
+				return result, crucialErr
+			}
+			return result, err
+		}, s)
 	}
 }
 
