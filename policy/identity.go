@@ -6,10 +6,8 @@ import (
 	"github.com/mapogolions/resilience"
 )
 
-func IdentityFallback[T any](ctx context.Context, outcome resilience.PolicyOutcome[T]) (T, error) {
-	return outcome.Result, outcome.Err
-}
-
 func NewIdentityPolicy[S any, T any]() resilience.Policy[S, T] {
-	return NewFallbackPolicy[S, T](IdentityFallback)
+	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
+		return f(ctx, s)
+	}
 }
