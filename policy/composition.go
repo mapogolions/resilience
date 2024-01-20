@@ -28,5 +28,5 @@ func Pipeline[S any, T any](policies ...resilience.Policy[S, T]) resilience.Poli
 	if len(rest) == 0 {
 		return policy
 	}
-	return Combine(Combine(policies[0], policies[1]), Pipeline(rest...))
+	return Combine(policy, Pipeline(rest...))
 }
