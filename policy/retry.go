@@ -5,27 +5,26 @@ import (
 	"sync/atomic"
 
 	"github.com/mapogolions/resilience"
-	"github.com/mapogolions/resilience/internal"
 )
 
-type OnRetryFunc[S any, T any] func(context.Context, resilience.PolicyOutcome[T])
+type RetryPred[T any, R any] func(resilience.PolicyOutcome[T]) (bool, R)
+type OnRetryFunc[S any, T any, R any] func(context.Context, resilience.PolicyOutcome[T], R)
 
-func NewRetryPolicyL[S any, T any](retryCount int, onRetry OnRetryFunc[S, T]) resilience.Policy[S, T] {
+func OnRetryIdentity[S any, T any, R any](context.Context, resilience.PolicyOutcome[T], R) {}
+func OnRetryCountIdentity[S any, T any](context.Context, resilience.PolicyOutcome[T], int) {}
+
+func NewRetryCountPolicy[S any, T any](retryCount int, onRetry OnRetryFunc[S, T, int]) resilience.Policy[S, T] {
 	var attempts atomic.Int64
-	shouldRetry := func(outcome resilience.PolicyOutcome[T]) bool {
-		c := attempts.Add(1)
-		return int(c) >= retryCount
+	shouldRetry := func(outcome resilience.PolicyOutcome[T]) (bool, int) {
+		cur := int(attempts.Add(1))
+		return cur >= retryCount, cur
 	}
-	var wrapOnRetry OnRetryFunc[S, T] = func(ctx context.Context, outcome resilience.PolicyOutcome[T]) {
-		outcome.Dict[internal.RetryAttemptsKey] = int(attempts.Load())
-		onRetry(ctx, outcome)
-	}
-	return NewRetryPolicyByPredicate[S, T](shouldRetry, wrapOnRetry)
+	return NewRetryPolicy[S, T](shouldRetry, onRetry)
 }
 
-func NewRetryPolicyByPredicate[S any, T any](
-	shouldRetry func(resilience.PolicyOutcome[T]) bool,
-	onRetry OnRetryFunc[S, T],
+func NewRetryPolicy[S any, T any, R any](
+	shouldRetry RetryPred[T, R],
+	onRetry OnRetryFunc[S, T, R],
 ) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var result T
@@ -33,10 +32,11 @@ func NewRetryPolicyByPredicate[S any, T any](
 		for {
 			result, err = f(ctx, s)
 			outcome := resilience.PolicyOutcome[T]{Result: result, Err: err}
-			if !shouldRetry(outcome) {
-				return result, err
+			if ok, r := shouldRetry(outcome); ok {
+				onRetry(ctx, outcome, r)
+				continue
 			}
-			onRetry(ctx, outcome)
+			return result, err
 		}
 	}
 }
