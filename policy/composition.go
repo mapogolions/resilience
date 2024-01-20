@@ -21,5 +21,12 @@ func Pipeline[S any, T any](policies ...resilience.Policy[S, T]) resilience.Poli
 	if len(policies) == 1 {
 		return policies[0]
 	}
-	return Combine(Pipeline(policies[2:]...), Combine(policies[1], policies[0]))
+	policy := Combine(policies[0], policies[1])
+	// Avoid using the following construct: `return Combine(policy, Pipeline(polices[2:]...))`
+	// This helps prevent the addition of redundant policies to the pipeline when the number of policies is even
+	rest := policies[2:]
+	if len(rest) == 0 {
+		return policy
+	}
+	return Combine(Combine(policies[0], policies[1]), Pipeline(rest...))
 }
