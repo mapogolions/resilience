@@ -32,7 +32,7 @@ func TestFallback(t *testing.T) {
 	t.Run("fallback should be able to ignore original error and return fallback value", func(t *testing.T) {
 		// Arrange
 		fallbackResult := -1
-		var fallback Fallback[int] = func(ctx context.Context, outcome resilience.PolicyOutcome[int]) (int, error) {
+		var fallback FallbackFunc[int] = func(ctx context.Context, outcome resilience.PolicyOutcome[int]) (int, error) {
 			if outcome.Result != 0 || outcome.Err != errSomethingWentWrong {
 				t.Fail()
 			}

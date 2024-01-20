@@ -1,12 +1,21 @@
 package resilience
 
-import "context"
+import (
+	"context"
+
+	"github.com/mapogolions/resilience/internal"
+)
 
 type Policy[S any, T any] func(context.Context, func(context.Context, S) (T, error), S) (T, error)
 
 type PolicyOutcome[T any] struct {
 	Result T
 	Err    error
+	Dict   map[string]interface{}
+}
+
+func (outcome PolicyOutcome[T]) RetryAttempts() int {
+	return outcome.Dict[internal.RetryAttemptsKey].(int)
 }
 
 type ResultPredicate[T any] func(T) bool
