@@ -16,7 +16,7 @@ func TestPanicFallback(t *testing.T) {
 		f := func(ctx context.Context, s string) (int, error) {
 			panic(errSomethingWentWrong)
 		}
-		policy := NewPanicFallbackPolicy[string, int](IdentityFallback[int])
+		policy := NewPanicFallbackPolicy[string, int](IdentityFallback)
 
 		// Act
 		result, err := policy(context.Background(), f, "foo")
@@ -57,7 +57,7 @@ func TestFallback(t *testing.T) {
 		f := func(ctx context.Context, s string) (int, error) {
 			return len(s), nil
 		}
-		policy := NewFallbackPolicy[string, int](IdentityFallback[int])
+		policy := NewFallbackPolicy[string, int](IdentityFallback)
 
 		// Act
 		result, err := policy(context.Background(), f, "foo")
@@ -73,7 +73,7 @@ func TestFallback(t *testing.T) {
 		f := func(ctx context.Context, s string) (int, error) {
 			return 0, errSomethingWentWrong
 		}
-		policy := NewFallbackPolicy[string, int](IdentityFallback[int])
+		policy := NewFallbackPolicy[string, int](IdentityFallback)
 
 		// Act
 		result, err := policy(context.Background(), f, "foo")

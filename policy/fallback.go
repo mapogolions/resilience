@@ -10,10 +10,6 @@ import (
 
 type Fallback[T any] func(context.Context, resilience.PolicyOutcome[T]) (T, error)
 
-func IdentityFallback[T any](ctx context.Context, outcome resilience.PolicyOutcome[T]) (T, error) {
-	return outcome.Result, outcome.Err
-}
-
 func NewFallbackPolicy[S any, T any](fallback Fallback[T]) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		result, err := f(ctx, s)
