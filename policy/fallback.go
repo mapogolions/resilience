@@ -21,9 +21,8 @@ func NewPanicFallbackPolicy[S any, T any](fallback Fallback[T]) resilience.Polic
 	policy := NewFallbackPolicy[S, T](fallback)
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		return policy(ctx, func(ctx context.Context, s S) (T, error) {
-			var crucialErr error
 			var result T
-			var err error
+			var crucialErr, err error
 			tryCatch(func() { result, err = f(ctx, s) }, &crucialErr)
 			if crucialErr != nil {
 				return result, crucialErr
@@ -33,18 +32,18 @@ func NewPanicFallbackPolicy[S any, T any](fallback Fallback[T]) resilience.Polic
 	}
 }
 
-func tryCatch(f func(), err *error) {
+func tryCatch(f func(), crucialErr *error) {
 	defer func() {
 		if info := recover(); info != nil {
 			if errorMessage, ok := info.(string); ok {
-				*err = errors.New(errorMessage)
+				*crucialErr = errors.New(errorMessage)
 				return
 			}
-			if ex, ok := info.(error); ok {
-				*err = ex
+			if err, ok := info.(error); ok {
+				*crucialErr = err
 				return
 			}
-			*err = fmt.Errorf("%v", info)
+			*crucialErr = fmt.Errorf("%v", info)
 		}
 	}()
 	f()
