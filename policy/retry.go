@@ -19,7 +19,7 @@ func NewRetryCountPolicy[S any, T any](retryCount int, onRetry OnRetryFunc[S, T,
 		cur := int(attempts.Add(1))
 		return cur >= retryCount, cur
 	}
-	return NewRetryPolicy[S, T](shouldRetry, onRetry)
+	return NewRetryPolicy(shouldRetry, onRetry)
 }
 
 func NewRetryPolicy[S any, T any, R any](
