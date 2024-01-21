@@ -17,8 +17,8 @@ func TestRetry(t *testing.T) {
 		for i := 0; i < 5; i++ {
 			wg.Add(1)
 			go func() {
-				var attempts int
 				defer wg.Done()
+				var attempts int
 				result, err := policy(context.Background(), func(ctx context.Context, s string) (int, error) {
 					attempts++
 					return 0, errSomethingWentWrong
