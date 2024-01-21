@@ -8,23 +8,23 @@ import (
 
 type RetryCondition[T any] func(context.Context, resilience.PolicyOutcome[T], int) bool
 
-func RetryOnError[T any](ctx context.Context, outcome resilience.PolicyOutcome[T], attempts int) bool {
+func RetryOnErrorCondition[T any](ctx context.Context, outcome resilience.PolicyOutcome[T], attempts int) bool {
 	return outcome.Err != nil
 }
 
-func NewRetryPolicy[S any, T any](retryCount int, shouldRetry RetryCondition[T]) resilience.Policy[S, T] {
+func NewRetryPolicy[S any, T any](retryCount int, condition RetryCondition[T]) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var result T
 		var err error
-		var count int
+		var attempts int
 		for {
 			result, err = f(ctx, s)
-			count++
-			if count >= retryCount {
+			attempts++
+			if attempts >= retryCount {
 				return result, err
 			}
 			outcome := resilience.PolicyOutcome[T]{Result: result, Err: err}
-			if !shouldRetry(ctx, outcome, count) {
+			if !condition(ctx, outcome, attempts) {
 				return result, err
 			}
 		}
