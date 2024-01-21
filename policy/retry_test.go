@@ -24,7 +24,7 @@ func TestRetry(t *testing.T) {
 					return 0, errSomethingWentWrong
 				}, "foo")
 
-				if result != 0 || err != errSomethingWentWrong {
+				if result != 0 || err != errSomethingWentWrong || attempts != retryCount {
 					t.Fail()
 				}
 			}()
