@@ -11,10 +11,10 @@ func TestRetry(t *testing.T) {
 	t.Run("should be possible to configure delay that depends on attempt", func(t *testing.T) {
 		// Arrange
 		retryCount := 4
-		condition := NewRetryOnErrorWithDelayCondition[int](func(attempts int) time.Duration {
-			return time.Duration(attempts * int(time.Millisecond))
+		shouldRetry := NewRetryCountOnErrorWithDelayCondition[int](retryCount, func(attempts int) time.Duration {
+			return time.Duration((attempts + 1) * int(time.Millisecond))
 		})
-		policy := NewRetryPolicy[string, int](retryCount, condition)
+		policy := NewRetryPolicy[string, int](shouldRetry)
 
 		// Act
 		start := time.Now()
@@ -32,7 +32,8 @@ func TestRetry(t *testing.T) {
 		// Arrange
 		retryCount := 3
 		expectedCalls := retryCount + 1
-		policy := NewRetryPolicy[string, int](retryCount, RetryOnErrorCondition)
+		shouldRetry := NewRetryCountOnErrorCondition[int](retryCount)
+		policy := NewRetryPolicy[string, int](shouldRetry)
 
 		// Act + Assert
 		wg := sync.WaitGroup{}
@@ -58,7 +59,8 @@ func TestRetry(t *testing.T) {
 		// Arrange
 		var calls int
 		retryCount := 3
-		policy := NewRetryPolicy[string, int](retryCount, RetryOnErrorCondition)
+		shouldRetry := NewRetryCountOnErrorCondition[int](retryCount)
+		policy := NewRetryPolicy[string, int](shouldRetry)
 
 		// Act
 		result, err := policy(context.Background(), func(ctx context.Context, s string) (int, error) {
@@ -83,7 +85,8 @@ func TestRetry(t *testing.T) {
 		var calls int
 		retryCount := 3
 		expectedCalls := retryCount + 1
-		policy := NewRetryPolicy[string, int](retryCount, RetryOnErrorCondition)
+		shouldRetry := NewRetryCountOnErrorCondition[int](retryCount)
+		policy := NewRetryPolicy[string, int](shouldRetry)
 
 		// Act
 		result, err := policy(context.Background(), func(ctx context.Context, s string) (int, error) {
