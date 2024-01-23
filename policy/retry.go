@@ -9,13 +9,9 @@ import (
 
 type RetryCondition[T any] func(ctx context.Context, outcome resilience.PolicyOutcome[T], retries int) bool
 
-func RetryOnErrorCondition[T any](_ context.Context, outcome resilience.PolicyOutcome[T], _ int) bool {
-	return outcome.Err != nil
-}
-
 func NewRetryCountOnErrorCondition[T any](retryCount int) RetryCondition[T] {
 	return func(ctx context.Context, outcome resilience.PolicyOutcome[T], retries int) bool {
-		return retries < retryCount && RetryOnErrorCondition[T](ctx, outcome, retries)
+		return retries < retryCount && outcome.Err != nil
 	}
 }
 
