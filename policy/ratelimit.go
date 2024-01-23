@@ -11,17 +11,25 @@ import (
 
 var ErrRateLimitRejected = errors.New("rate limit rejected")
 
-type RateLimiter func() (bool, time.Duration)
+type RateLimitCondition func() bool
 
-func NewRateLimitPolicy[S any, T any](tokenPerUnit time.Duration, capacity int64) resilience.Policy[S, T] {
+func NewTokenBucketRateLimitCondition(tokenPerUnit time.Duration, capacity int64) RateLimitCondition {
 	rateLimiter := internal.NewLockFreeRateLimiter(tokenPerUnit, capacity, internal.DefaultTimeProvider)
-	return NewRateLimitPolicyWith[S, T](rateLimiter.Try)
+	return func() bool {
+		ok, _ := rateLimiter.Try()
+		return !ok
+	}
 }
 
-func NewRateLimitPolicyWith[S any, T any](rateLimiter RateLimiter) resilience.Policy[S, T] {
+func NewTokenBucketRateLimitPolicy[S any, T any](tokenPerUnit time.Duration, capacity int64) resilience.Policy[S, T] {
+	shouldLimit := NewTokenBucketRateLimitCondition(tokenPerUnit, capacity)
+	return NewRateLimitPolicy[S, T](shouldLimit)
+}
+
+func NewRateLimitPolicy[S any, T any](shouldLimit RateLimitCondition) resilience.Policy[S, T] {
 	var defaultT T
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-		if ok, _ := rateLimiter(); !ok {
+		if shouldLimit() {
 			return defaultT, ErrRateLimitRejected
 		}
 		return f(ctx, s)
