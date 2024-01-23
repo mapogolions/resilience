@@ -7,23 +7,23 @@ import (
 	"github.com/mapogolions/resilience"
 )
 
-type RetryCondition[T any] func(ctx context.Context, outcome resilience.PolicyOutcome[T], attempts int) bool
+type RetryCondition[T any] func(ctx context.Context, outcome resilience.PolicyOutcome[T], retries int) bool
 
 func RetryOnErrorCondition[T any](_ context.Context, outcome resilience.PolicyOutcome[T], _ int) bool {
 	return outcome.Err != nil
 }
 
 func NewRetryCountOnErrorCondition[T any](retryCount int) RetryCondition[T] {
-	return func(ctx context.Context, outcome resilience.PolicyOutcome[T], attempts int) bool {
-		return attempts < retryCount && RetryOnErrorCondition[T](ctx, outcome, attempts)
+	return func(ctx context.Context, outcome resilience.PolicyOutcome[T], retries int) bool {
+		return retries < retryCount && RetryOnErrorCondition[T](ctx, outcome, retries)
 	}
 }
 
 func NewRetryCountOnErrorWithDelayCondition[T any](retryCount int, delayProvider func(int) time.Duration) RetryCondition[T] {
 	retryCountOnError := NewRetryCountOnErrorCondition[T](retryCount)
-	return func(ctx context.Context, outcome resilience.PolicyOutcome[T], attempts int) bool {
-		if retryCountOnError(ctx, outcome, attempts) {
-			defer time.Sleep(delayProvider(attempts))
+	return func(ctx context.Context, outcome resilience.PolicyOutcome[T], retries int) bool {
+		if retryCountOnError(ctx, outcome, retries) {
+			defer time.Sleep(delayProvider(retries))
 			return true
 		}
 		return false
@@ -34,25 +34,25 @@ func NewRetryPolicy[S any, T any](shouldRetry RetryCondition[T]) resilience.Poli
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var result T
 		var err error
-		var attempts int
+		var retries int
 		for {
 			result, err = f(ctx, s)
 			outcome := resilience.PolicyOutcome[T]{Result: result, Err: err}
-			if !shouldRetry(ctx, outcome, attempts) {
+			if !shouldRetry(ctx, outcome, retries) {
 				return result, err
 			}
-			attempts++
+			retries++
 		}
 	}
 }
 
 func (rc RetryCondition[T]) Or(conditions ...RetryCondition[T]) RetryCondition[T] {
-	return func(ctx context.Context, outcome resilience.PolicyOutcome[T], attempts int) bool {
-		if rc(ctx, outcome, attempts) {
+	return func(ctx context.Context, outcome resilience.PolicyOutcome[T], retries int) bool {
+		if rc(ctx, outcome, retries) {
 			return true
 		}
 		for _, condition := range conditions {
-			if condition(ctx, outcome, attempts) {
+			if condition(ctx, outcome, retries) {
 				return true
 			}
 		}
@@ -61,12 +61,12 @@ func (rc RetryCondition[T]) Or(conditions ...RetryCondition[T]) RetryCondition[T
 }
 
 func (rc RetryCondition[T]) And(conditions ...RetryCondition[T]) RetryCondition[T] {
-	return func(ctx context.Context, outcome resilience.PolicyOutcome[T], attempts int) bool {
-		if !rc(ctx, outcome, attempts) {
+	return func(ctx context.Context, outcome resilience.PolicyOutcome[T], retries int) bool {
+		if !rc(ctx, outcome, retries) {
 			return false
 		}
 		for _, condition := range conditions {
-			if !condition(ctx, outcome, attempts) {
+			if !condition(ctx, outcome, retries) {
 				return false
 			}
 		}

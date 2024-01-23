@@ -8,11 +8,11 @@ import (
 )
 
 func TestRetry(t *testing.T) {
-	t.Run("should be possible to configure delay that depends on attempt", func(t *testing.T) {
+	t.Run("should be possible to configure delay that depends on retries", func(t *testing.T) {
 		// Arrange
 		retryCount := 4
-		shouldRetry := NewRetryCountOnErrorWithDelayCondition[int](retryCount, func(attempts int) time.Duration {
-			return time.Duration((attempts + 1) * int(time.Millisecond))
+		shouldRetry := NewRetryCountOnErrorWithDelayCondition[int](retryCount, func(retries int) time.Duration {
+			return time.Duration((retries + 1) * int(time.Millisecond))
 		})
 		policy := NewRetryPolicy[string, int](shouldRetry)
 
