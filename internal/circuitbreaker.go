@@ -7,7 +7,6 @@ import (
 )
 
 var errInvalidCircuiteState error = errors.New("invalid circuite state")
-var errBrokenCircuite error = errors.New("broken circute")
 
 type curcuiteState int
 
@@ -29,7 +28,7 @@ type curcuiteBreaker[T any] struct {
 	lastResult          T
 }
 
-func (cb *curcuiteBreaker[T]) Reset() {
+func (cb *curcuiteBreaker[T]) reset() {
 	var defaultT T
 	var defaultTime time.Time
 	cb.lastErr = nil
@@ -38,25 +37,24 @@ func (cb *curcuiteBreaker[T]) Reset() {
 	cb.brokenTill = defaultTime
 }
 
-func NewCircuiteBreaker[T any]() *curcuiteBreaker[T] {
-	var cb *curcuiteBreaker[T]
-	return cb
+func NewCircuiteBreaker[T any](breakAfter int, breakDuration time.Duration, timeProvider timeProvider) *curcuiteBreaker[T] {
+	return &curcuiteBreaker[T]{breakAfter: breakAfter, breakDuration: breakDuration, timeProvider: timeProvider}
 }
 
-func (cb *curcuiteBreaker[T]) Before() error {
+func (cb *curcuiteBreaker[T]) Before() bool {
 	if cb.state != curcuiteStateOpen {
-		return nil
+		return true
 	}
 	cb.Lock()
 	defer cb.Unlock()
 	if cb.state != curcuiteStateOpen {
-		return nil
+		return true
 	}
 	if cb.timeProvider.UtcNow().Before(cb.brokenTill) {
-		return errBrokenCircuite
+		return false
 	}
 	cb.state = curcuiteStateHalfOpen
-	return nil
+	return true
 }
 
 func (cb *curcuiteBreaker[T]) Success() {
@@ -71,7 +69,7 @@ func (cb *curcuiteBreaker[T]) Success() {
 		break
 	case curcuiteStateHalfOpen:
 		cb.state = curcuiteStateOpen
-		cb.Reset()
+		cb.reset()
 	default:
 		panic(errInvalidCircuiteState)
 	}
