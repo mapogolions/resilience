@@ -11,7 +11,7 @@ import (
 
 var ErrCircuitOpen error = errors.New("circuit open")
 
-type CircuitBreakCondition[T any] func(resilience.PolicyOutcome[T]) bool
+type CircuitOpenCondition[T any] func(resilience.PolicyOutcome[T]) bool
 type CircuitCommit[T any] func(resilience.PolicyOutcome[T])
 type CircuitFunc[T any] func(CircuitCommit[T]) (T, error)
 type CircuitContinuation[T any] func(CircuitFunc[T]) (T, error)
@@ -20,7 +20,7 @@ type CircuitBreaker[T any] func() (CircuitContinuation[T], bool)
 func NewConsecutiveFailuresCircuitBreaker[T any](
 	consecutiveFailures int,
 	breakDuration time.Duration,
-	condition CircuitBreakCondition[T],
+	condition CircuitOpenCondition[T],
 ) CircuitBreaker[T] {
 	circuitBreaker := internal.NewCircuitBreaker[T](consecutiveFailures, breakDuration, internal.DefaultTimeProvider)
 	var commit CircuitCommit[T] = func(outcome resilience.PolicyOutcome[T]) {
