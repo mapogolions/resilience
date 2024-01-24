@@ -10,3 +10,5 @@ type PolicyOutcome[T any] struct {
 	Result T
 	Err    error
 }
+
+type PolicyOutcomeAcceptanceCondition[T any] func(PolicyOutcome[T]) bool
