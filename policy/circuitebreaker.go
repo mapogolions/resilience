@@ -9,40 +9,40 @@ import (
 	"github.com/mapogolions/resilience/internal"
 )
 
-var ErrBrokenCircuite error = errors.New("broken curcuite")
+var ErrBrokenCircuit error = errors.New("broken curcuite")
 
-type CircuiteOpenCondition[T any] func(resilience.PolicyOutcome[T]) bool
-type CircuiteCommit[T any] func(resilience.PolicyOutcome[T])
-type CircuiteFunc[T any] func(CircuiteCommit[T]) (T, error)
-type CircuiteContinuation[T any] func(CircuiteFunc[T]) (T, error)
-type CircuiteBreaker[T any] func() (CircuiteContinuation[T], bool)
+type CircuitBreakCondition[T any] func(resilience.PolicyOutcome[T]) bool
+type CircuitCommit[T any] func(resilience.PolicyOutcome[T])
+type CircuitFunc[T any] func(CircuitCommit[T]) (T, error)
+type CircuitContinuation[T any] func(CircuitFunc[T]) (T, error)
+type CircuitBreaker[T any] func() (CircuitContinuation[T], bool)
 
-func NewConsecutiveFailuresCircuiteBreaker[T any](
+func NewConsecutiveFailuresCircuitBreaker[T any](
 	consecutiveFailures int,
 	breakDuration time.Duration,
-	condition CircuiteOpenCondition[T],
-) CircuiteBreaker[T] {
-	circuiteBreaker := internal.NewCircuiteBreaker[T](consecutiveFailures, breakDuration, internal.DefaultTimeProvider)
-	var commit CircuiteCommit[T] = func(outcome resilience.PolicyOutcome[T]) {
+	condition CircuitBreakCondition[T],
+) CircuitBreaker[T] {
+	circuitBreaker := internal.NewCircuitBreaker[T](consecutiveFailures, breakDuration, internal.DefaultTimeProvider)
+	var commit CircuitCommit[T] = func(outcome resilience.PolicyOutcome[T]) {
 		if condition(outcome) {
-			circuiteBreaker.Success()
+			circuitBreaker.Success()
 		} else {
-			circuiteBreaker.Failure(outcome.Result, outcome.Err)
+			circuitBreaker.Failure(outcome.Result, outcome.Err)
 		}
 	}
-	return func() (CircuiteContinuation[T], bool) {
-		if circuiteBreaker.Before() {
+	return func() (CircuitContinuation[T], bool) {
+		if circuitBreaker.Before() {
 			return nil, false
 		}
-		return func(cbf CircuiteFunc[T]) (T, error) { return cbf(commit) }, true
+		return func(cbf CircuitFunc[T]) (T, error) { return cbf(commit) }, true
 	}
 }
 
-func NewCircuiteBreakerPolicy[S any, T any](circuiteBreaker CircuiteBreaker[T]) resilience.Policy[S, T] {
+func NewCircuitBreakerPolicy[S any, T any](circuitBreaker CircuitBreaker[T]) resilience.Policy[S, T] {
 	var defaltT T
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-		if continuation, ok := circuiteBreaker(); ok {
-			fn := func(commit CircuiteCommit[T]) (T, error) {
+		if continuation, ok := circuitBreaker(); ok {
+			fn := func(commit CircuitCommit[T]) (T, error) {
 				result, err := f(ctx, s)
 				outcome := resilience.PolicyOutcome[T]{Result: result, Err: err}
 				commit(outcome)
@@ -50,6 +50,6 @@ func NewCircuiteBreakerPolicy[S any, T any](circuiteBreaker CircuiteBreaker[T]) 
 			}
 			return continuation(fn)
 		}
-		return defaltT, ErrBrokenCircuite
+		return defaltT, ErrBrokenCircuit
 	}
 }

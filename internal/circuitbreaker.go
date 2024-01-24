@@ -6,19 +6,19 @@ import (
 	"time"
 )
 
-var errInvalidCircuiteState error = errors.New("invalid circuite state")
+var errInvalidCircuitState error = errors.New("invalid circuit state")
 
-type curcuiteState int
+type circuitState int
 
 const (
-	curcuiteStateClosed   curcuiteState = 0
-	curcuiteStateOpen     curcuiteState = 1
-	curcuiteStateHalfOpen curcuiteState = 2
+	circuitStateClosed   circuitState = 0
+	circuitStateOpen     circuitState = 1
+	circuitStateHalfOpen circuitState = 2
 )
 
-type curcuiteBreaker[T any] struct {
+type circuitBreaker[T any] struct {
 	sync.Mutex
-	state               curcuiteState
+	state               circuitState
 	consecutiveFailures int
 	breakAfter          int
 	breakDuration       time.Duration
@@ -28,7 +28,7 @@ type curcuiteBreaker[T any] struct {
 	lastResult          T
 }
 
-func (cb *curcuiteBreaker[T]) reset() {
+func (cb *circuitBreaker[T]) reset() {
 	var defaultT T
 	var defaultTime time.Time
 	cb.lastErr = nil
@@ -37,45 +37,45 @@ func (cb *curcuiteBreaker[T]) reset() {
 	cb.brokenTill = defaultTime
 }
 
-func NewCircuiteBreaker[T any](breakAfter int, breakDuration time.Duration, timeProvider timeProvider) *curcuiteBreaker[T] {
-	return &curcuiteBreaker[T]{breakAfter: breakAfter, breakDuration: breakDuration, timeProvider: timeProvider}
+func NewCircuitBreaker[T any](breakAfter int, breakDuration time.Duration, timeProvider timeProvider) *circuitBreaker[T] {
+	return &circuitBreaker[T]{breakAfter: breakAfter, breakDuration: breakDuration, timeProvider: timeProvider}
 }
 
-func (cb *curcuiteBreaker[T]) Before() bool {
-	if cb.state != curcuiteStateOpen {
+func (cb *circuitBreaker[T]) Before() bool {
+	if cb.state != circuitStateOpen {
 		return true
 	}
 	cb.Lock()
 	defer cb.Unlock()
-	if cb.state != curcuiteStateOpen {
+	if cb.state != circuitStateOpen {
 		return true
 	}
 	if cb.timeProvider.UtcNow().Before(cb.brokenTill) {
 		return false
 	}
-	cb.state = curcuiteStateHalfOpen
+	cb.state = circuitStateHalfOpen
 	return true
 }
 
-func (cb *curcuiteBreaker[T]) Success() {
+func (cb *circuitBreaker[T]) Success() {
 	cb.Lock()
 	defer cb.Unlock()
 
 	switch cb.state {
-	case curcuiteStateClosed:
+	case circuitStateClosed:
 		cb.consecutiveFailures = 0
-	case curcuiteStateOpen:
-		// circuiteBreaker.Failure() and then circuiteBreaker.Success()
+	case circuitStateOpen:
+		// circuitBreaker.Failure() and then circuitBreaker.Success()
 		break
-	case curcuiteStateHalfOpen:
-		cb.state = curcuiteStateOpen
+	case circuitStateHalfOpen:
+		cb.state = circuitStateOpen
 		cb.reset()
 	default:
-		panic(errInvalidCircuiteState)
+		panic(errInvalidCircuitState)
 	}
 }
 
-func (cb *curcuiteBreaker[T]) Failure(result T, err error) {
+func (cb *circuitBreaker[T]) Failure(result T, err error) {
 	cb.Lock()
 	defer cb.Unlock()
 
@@ -83,19 +83,19 @@ func (cb *curcuiteBreaker[T]) Failure(result T, err error) {
 	cb.lastErr = err
 
 	switch cb.state {
-	case curcuiteStateClosed:
+	case circuitStateClosed:
 		cb.consecutiveFailures++
 		if cb.consecutiveFailures >= cb.breakAfter {
-			cb.state = curcuiteStateClosed
+			cb.state = circuitStateClosed
 			cb.brokenTill = cb.timeProvider.UtcNow().Add(cb.breakDuration)
 		}
-	case curcuiteStateHalfOpen:
-		cb.state = curcuiteStateClosed
+	case circuitStateHalfOpen:
+		cb.state = circuitStateClosed
 		cb.brokenTill = cb.timeProvider.UtcNow().Add(cb.breakDuration)
-	case curcuiteStateOpen:
-		// N concurrent circuiteBreaker.Failure() calls
+	case circuitStateOpen:
+		// N concurrent circuitBreaker.Failure() calls
 		break
 	default:
-		panic(errInvalidCircuiteState)
+		panic(errInvalidCircuitState)
 	}
 }
