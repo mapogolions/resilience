@@ -1,24 +1,77 @@
 package internal
 
 import (
-	"errors"
 	"sync"
 	"time"
 )
 
-var errInvalidCircuitState error = errors.New("invalid circuit state")
+type circuitState[T any] interface {
+	Before() bool
+	Success()
+	Failure(T, error)
+}
 
-type circuitState int
+type circuitStateOpen[T any] struct {
+	cb *circuitBreaker[T]
+}
 
-const (
-	circuitStateClosed   circuitState = 0
-	circuitStateOpen     circuitState = 1
-	circuitStateHalfOpen circuitState = 2
-)
+func (s *circuitStateOpen[T]) Before() bool {
+	return false
+}
+
+func (s *circuitStateOpen[T]) Success() {
+}
+
+func (s *circuitStateOpen[T]) Failure(T, error) {
+}
+
+type circuitStateClosed[T any] struct {
+	cb *circuitBreaker[T]
+}
+
+func (s *circuitStateClosed[T]) Before() bool {
+	return !s.cb.timeProvider.UtcNow().Before(s.cb.brokenTill)
+}
+
+func (s *circuitStateClosed[T]) Success() {
+}
+
+func (s *circuitStateClosed[T]) Failure(result T, err error) {
+	s.cb.lastResult = result
+	s.cb.lastErr = err
+	s.cb.consecutiveFailures++
+	if s.cb.consecutiveFailures >= s.cb.breakAfter {
+		s.cb.state = s.cb.open
+		s.cb.brokenTill = s.cb.timeProvider.UtcNow().Add(s.cb.breakDuration)
+	}
+}
+
+type circuitStateHalfOpen[T any] struct {
+	cb *circuitBreaker[T]
+}
+
+func (s *circuitStateHalfOpen[T]) Before() bool {
+	return false
+}
+
+func (s *circuitStateHalfOpen[T]) Success() {
+	s.cb.state = s.cb.closed
+	s.cb.reset()
+}
+
+func (s *circuitStateHalfOpen[T]) Failure(result T, err error) {
+	s.cb.lastResult = result
+	s.cb.lastErr = err
+	s.cb.state = s.cb.closed
+	s.cb.brokenTill = s.cb.timeProvider.UtcNow().Add(s.cb.breakDuration)
+}
 
 type circuitBreaker[T any] struct {
 	sync.Mutex
-	state               circuitState
+	open                circuitState[T]
+	closed              circuitState[T]
+	halfOpen            circuitState[T]
+	state               circuitState[T]
 	consecutiveFailures int
 	breakAfter          int
 	breakDuration       time.Duration
@@ -38,64 +91,34 @@ func (cb *circuitBreaker[T]) reset() {
 }
 
 func NewCircuitBreaker[T any](breakAfter int, breakDuration time.Duration, timeProvider timeProvider) *circuitBreaker[T] {
-	return &circuitBreaker[T]{breakAfter: breakAfter, breakDuration: breakDuration, timeProvider: timeProvider}
+	cb := &circuitBreaker[T]{
+		breakAfter:    breakAfter,
+		breakDuration: breakDuration,
+		timeProvider:  timeProvider}
+	cb.open = &circuitStateOpen[T]{cb}
+	cb.halfOpen = &circuitStateHalfOpen[T]{cb}
+	cb.closed = &circuitStateClosed[T]{cb}
+	cb.state = cb.closed
+	return cb
 }
 
 func (cb *circuitBreaker[T]) Before() bool {
-	if cb.state != circuitStateOpen {
+	if cb.state != cb.open {
 		return true
 	}
 	cb.Lock()
 	defer cb.Unlock()
-	if cb.state != circuitStateOpen {
-		return true
-	}
-	if cb.timeProvider.UtcNow().Before(cb.brokenTill) {
-		return false
-	}
-	cb.state = circuitStateHalfOpen
-	return true
+	return cb.state.Before()
 }
 
 func (cb *circuitBreaker[T]) Success() {
 	cb.Lock()
 	defer cb.Unlock()
-
-	switch cb.state {
-	case circuitStateClosed:
-		cb.consecutiveFailures = 0
-	case circuitStateOpen:
-		// circuitBreaker.Failure() and then circuitBreaker.Success()
-		break
-	case circuitStateHalfOpen:
-		cb.state = circuitStateOpen
-		cb.reset()
-	default:
-		panic(errInvalidCircuitState)
-	}
+	cb.state.Success()
 }
 
 func (cb *circuitBreaker[T]) Failure(result T, err error) {
 	cb.Lock()
 	defer cb.Unlock()
-
-	cb.lastResult = result
-	cb.lastErr = err
-
-	switch cb.state {
-	case circuitStateClosed:
-		cb.consecutiveFailures++
-		if cb.consecutiveFailures >= cb.breakAfter {
-			cb.state = circuitStateClosed
-			cb.brokenTill = cb.timeProvider.UtcNow().Add(cb.breakDuration)
-		}
-	case circuitStateHalfOpen:
-		cb.state = circuitStateClosed
-		cb.brokenTill = cb.timeProvider.UtcNow().Add(cb.breakDuration)
-	case circuitStateOpen:
-		// N concurrent circuitBreaker.Failure() calls
-		break
-	default:
-		panic(errInvalidCircuitState)
-	}
+	cb.state.Failure(result, err)
 }
