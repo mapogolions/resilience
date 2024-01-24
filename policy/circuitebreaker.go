@@ -9,9 +9,9 @@ import (
 	"github.com/mapogolions/resilience/internal"
 )
 
-var ErrCircuitOpen error = errors.New("circuit open")
+var ErrCircuitBroken error = errors.New("circuit broken")
 
-type CircuitCommit[T any] func(resilience.PolicyOutcome[T])
+type CircuitCommit[T any] func(T, error)
 type CircuitFunc[T any] func(CircuitCommit[T]) (T, error)
 type CircuitContinuation[T any] func(CircuitFunc[T]) (T, error)
 type CircuitBreaker[T any] func() (CircuitContinuation[T], bool)
@@ -19,14 +19,14 @@ type CircuitBreaker[T any] func() (CircuitContinuation[T], bool)
 func NewConsecutiveFailuresCircuitBreaker[T any](
 	consecutiveFailures int,
 	breakDuration time.Duration,
-	condition resilience.PolicyOutcomeAcceptanceCondition[T],
+	condition OutcomeAcceptanceCondition[T],
 ) CircuitBreaker[T] {
 	circuitBreaker := internal.NewCircuitBreaker[T](consecutiveFailures, breakDuration, internal.DefaultTimeProvider)
-	var commit CircuitCommit[T] = func(outcome resilience.PolicyOutcome[T]) {
-		if condition(outcome) {
+	var commit CircuitCommit[T] = func(result T, err error) {
+		if condition(Outcome[T]{Result: result, Err: err}) {
 			circuitBreaker.Success()
 		} else {
-			circuitBreaker.Failure(outcome.Result, outcome.Err)
+			circuitBreaker.Failure(result, err)
 		}
 	}
 	return func() (CircuitContinuation[T], bool) {
@@ -43,12 +43,11 @@ func NewCircuitBreakerPolicy[S any, T any](circuitBreaker CircuitBreaker[T]) res
 		if continuation, ok := circuitBreaker(); ok {
 			fn := func(commit CircuitCommit[T]) (T, error) {
 				result, err := f(ctx, s)
-				outcome := resilience.PolicyOutcome[T]{Result: result, Err: err}
-				commit(outcome)
+				commit(result, err)
 				return result, err
 			}
 			return continuation(fn)
 		}
-		return defaltT, ErrCircuitOpen
+		return defaltT, ErrCircuitBroken
 	}
 }
