@@ -9,7 +9,7 @@ import (
 	"github.com/mapogolions/resilience/internal"
 )
 
-var ErrBrokenCircuit error = errors.New("broken curcuite")
+var ErrCircuitOpen error = errors.New("circuit open")
 
 type CircuitBreakCondition[T any] func(resilience.PolicyOutcome[T]) bool
 type CircuitCommit[T any] func(resilience.PolicyOutcome[T])
@@ -31,7 +31,7 @@ func NewConsecutiveFailuresCircuitBreaker[T any](
 		}
 	}
 	return func() (CircuitContinuation[T], bool) {
-		if circuitBreaker.Before() {
+		if circuitBreaker.IsCircuitOpen() {
 			return nil, false
 		}
 		return func(cbf CircuitFunc[T]) (T, error) { return cbf(commit) }, true
@@ -50,6 +50,6 @@ func NewCircuitBreakerPolicy[S any, T any](circuitBreaker CircuitBreaker[T]) res
 			}
 			return continuation(fn)
 		}
-		return defaltT, ErrBrokenCircuit
+		return defaltT, ErrCircuitOpen
 	}
 }

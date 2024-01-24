@@ -6,7 +6,7 @@ import (
 )
 
 type circuitState[T any] interface {
-	Before() bool
+	IsCircuitOpen() bool
 	Success()
 	Failure(T, error)
 }
@@ -15,8 +15,8 @@ type circuitStateOpen[T any] struct {
 	cb *circuitBreaker[T]
 }
 
-func (s *circuitStateOpen[T]) Before() bool {
-	return false
+func (s *circuitStateOpen[T]) IsCircuitOpen() bool {
+	return true
 }
 
 func (s *circuitStateOpen[T]) Success() {
@@ -29,8 +29,8 @@ type circuitStateClosed[T any] struct {
 	cb *circuitBreaker[T]
 }
 
-func (s *circuitStateClosed[T]) Before() bool {
-	return !s.cb.timeProvider.UtcNow().Before(s.cb.brokenTill)
+func (s *circuitStateClosed[T]) IsCircuitOpen() bool {
+	return s.cb.timeProvider.UtcNow().Before(s.cb.brokenTill)
 }
 
 func (s *circuitStateClosed[T]) Success() {
@@ -50,7 +50,7 @@ type circuitStateHalfOpen[T any] struct {
 	cb *circuitBreaker[T]
 }
 
-func (s *circuitStateHalfOpen[T]) Before() bool {
+func (s *circuitStateHalfOpen[T]) IsCircuitOpen() bool {
 	return false
 }
 
@@ -102,13 +102,13 @@ func NewCircuitBreaker[T any](breakAfter int, breakDuration time.Duration, timeP
 	return cb
 }
 
-func (cb *circuitBreaker[T]) Before() bool {
+func (cb *circuitBreaker[T]) IsCircuitOpen() bool {
 	if cb.state != cb.open {
-		return true
+		return false
 	}
 	cb.Lock()
 	defer cb.Unlock()
-	return cb.state.Before()
+	return cb.state.IsCircuitOpen()
 }
 
 func (cb *circuitBreaker[T]) Success() {
