@@ -42,7 +42,7 @@ func TestCombine(t *testing.T) {
 
 	t.Run("should combine two policies", func(t *testing.T) {
 		// Arrange
-		policy := Combine(addOne, power2)
+		policy := Compose(addOne, power2)
 
 		// Act
 		result, err := policy(
