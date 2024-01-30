@@ -31,6 +31,7 @@ type circuitBreaker[T any] struct {
 
 func NewCircuitBreaker[T any](breakAfter int, breakDuration time.Duration, timeProvider timeProvider) *circuitBreaker[T] {
 	return &circuitBreaker[T]{
+		state:         circuitStateClosed,
 		breakAfter:    breakAfter,
 		breakDuration: breakDuration,
 		timeProvider:  timeProvider,
