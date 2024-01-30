@@ -20,6 +20,10 @@ type fakeTimeProvider struct {
 	now time.Time
 }
 
+func NewFakeTimeProvider() *fakeTimeProvider {
+	return &fakeTimeProvider{now: time.Now().UTC()}
+}
+
 func (tp *fakeTimeProvider) UtcNow() time.Time {
 	return tp.now
 }
