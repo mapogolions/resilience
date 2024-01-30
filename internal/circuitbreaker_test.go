@@ -15,7 +15,7 @@ func TestCircuitBreaker(t *testing.T) {
 		cb.Failure(-1, errors.New("err1"))
 		timeProvider.Advance(breakDuration)
 
-		if cb.IsCircuitOpen() && cb.state != circuitStateHalfOpen {
+		if cb.IsCircuitOpen() || cb.state != circuitStateHalfOpen {
 			t.Fail()
 		}
 	})
