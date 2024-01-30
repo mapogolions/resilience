@@ -34,7 +34,7 @@ func TestCircuitBreaker(t *testing.T) {
 		}
 	})
 
-	t.Run("should break circuit after specified consecutive failures", func(t *testing.T) {
+	t.Run("should open circuit after specified consecutive failures", func(t *testing.T) {
 		breakAfter := 2
 		breakDuration := 2 * time.Second
 		cb := NewCircuitBreaker[int](breakAfter, breakDuration, DefaultTimeProvider)
@@ -46,7 +46,7 @@ func TestCircuitBreaker(t *testing.T) {
 		}
 	})
 
-	t.Run("circuit should be open at the begining", func(t *testing.T) {
+	t.Run("circuit should be closed at the begining", func(t *testing.T) {
 		breakAfter := 2
 		breakDuration := 2 * time.Second
 		cb := NewCircuitBreaker[int](breakAfter, breakDuration, DefaultTimeProvider)
