@@ -10,9 +10,9 @@ import (
 type circuitState int
 
 const (
-	circuitStateClosed   = 0
-	circuitStateOpen     = 1
-	circuitStateHalfOpen = 2
+	circuitStateClosed   circuitState = 0
+	circuitStateOpen     circuitState = 1
+	circuitStateHalfOpen circuitState = 2
 )
 
 var ErrInvalidCircuitState = errors.New("invalid circuit state")
@@ -21,7 +21,7 @@ type circuitBreaker[T any] struct {
 	sync.Mutex
 	state               circuitState
 	consecutiveFailures int
-	breakAfter          int
+	failureThreshold    int
 	breakDuration       time.Duration
 	breakTill           time.Time
 	timeProvider        timeProvider
@@ -29,12 +29,12 @@ type circuitBreaker[T any] struct {
 	lastErr             error
 }
 
-func NewCircuitBreaker[T any](breakAfter int, breakDuration time.Duration, timeProvider timeProvider) *circuitBreaker[T] {
+func NewCircuitBreaker[T any](failureThreshold int, breakDuration time.Duration, timeProvider timeProvider) *circuitBreaker[T] {
 	return &circuitBreaker[T]{
-		state:         circuitStateClosed,
-		breakAfter:    breakAfter,
-		breakDuration: breakDuration,
-		timeProvider:  timeProvider,
+		state:            circuitStateClosed,
+		failureThreshold: failureThreshold,
+		breakDuration:    breakDuration,
+		timeProvider:     timeProvider,
 	}
 }
 
@@ -96,7 +96,7 @@ func (cb *circuitBreaker[T]) Failure(result T, err error) {
 		cb.SetBreakTill()
 	case circuitStateClosed:
 		cb.consecutiveFailures++
-		if cb.consecutiveFailures >= cb.breakAfter {
+		if cb.consecutiveFailures >= cb.failureThreshold {
 			cb.state = circuitStateOpen
 			cb.SetBreakTill()
 		}

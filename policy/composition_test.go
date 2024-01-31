@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestCombine(t *testing.T) {
+func TestComposition(t *testing.T) {
 	t.Run("Should build a pipeline from multiple policies, with the first one being the outermost", func(t *testing.T) {
 		// Arrange
 		policy := Pipeline[string, int](minus, addOne, power2)
