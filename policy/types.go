@@ -6,3 +6,7 @@ type Outcome[T any] struct {
 }
 
 type OutcomeAcceptanceCondition[T any] func(Outcome[T]) bool
+
+func RejectOnError[T any](outcome Outcome[T]) bool {
+	return outcome.Err == nil
+}
