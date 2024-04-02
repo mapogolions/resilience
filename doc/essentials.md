@@ -1,18 +1,10 @@
 
 ### Essentials
 
-Policy is a function decorator that take another function as input and return a new function that extends or modifies the behavior of the original function without directly altering its code.
-
-The most generic form of function decorator
+Policy is a function that knows how to execute another function given as an input argument. It extends or modifies the behavior of the original function without directly altering its code."
 
 ```golang
-func[S any, T any](func(s S) (T, error), S) (T, error)
-```
-
-The above definition is almost identical to the one used inside this library. The library forces the client to use the `context.Context` parameter.
-
-```golang
-func[S any, T any](context.Context, func(context.Conte, S) (T, error), s S) (T, error)
+func[S any, T any](context.Context, func(context.Context, S) (T, error), S) (T, error)
 ```
 
 You are free to implement your own policy. For example, in the snippet below, the `delay` policy executes the original function with a specified delay. This functionality could be particularly useful during unit tests.
