@@ -16,9 +16,9 @@ func NewRetryCountOnErrorCondition[T any](retryCount int) RetryCondition[T] {
 }
 
 func NewRetryCountOnErrorWithDelayCondition[T any](retryCount int, delayProvider func(int) time.Duration) RetryCondition[T] {
-	retryCountOnError := NewRetryCountOnErrorCondition[T](retryCount)
+	condition := NewRetryCountOnErrorCondition[T](retryCount)
 	return func(ctx context.Context, outcome Outcome[T], retries int) bool {
-		if retryCountOnError(ctx, outcome, retries) {
+		if condition(ctx, outcome, retries) {
 			defer time.Sleep(delayProvider(retries))
 			return true
 		}
