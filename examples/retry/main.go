@@ -1,28 +1,30 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"time"
 
 	"github.com/mapogolions/resilience/policy"
 )
 
 func main() {
-	{
-		policy.NewRetryPolicy[string, []byte](
-			policy.NewRetryCountOnErrorCondition[[]byte](10),
-		)
-	}
+	type S string
+	type T []byte
 
-	{
-		policy.NewRetryPolicy[string, []byte](
-			policy.NewRetryCountOnErrorWithDelayCondition[[]byte](
-				3,
-				func(i int) time.Duration {
-					return time.Duration(i) * time.Second
-				},
-			),
-		)
-	}
-	fmt.Println("foo")
+	policy.NewRetryPolicy[S, T](
+		policy.NewRetryCountOnErrorCondition[T](10),
+	)
+
+	policy.NewRetryPolicy[S, T](
+		policy.NewRetryCountOnErrorWithDelayCondition[T](
+			3,
+			func(i int) time.Duration {
+				return time.Duration(i) * time.Second
+			},
+		),
+	)
+
+	policy.NewRetryPolicy[S, T](func(ctx context.Context, outcome policy.Outcome[T], retries int) bool {
+		panic("not implemented")
+	})
 }
