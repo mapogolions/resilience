@@ -10,6 +10,7 @@ import (
 func main() {
 	type S string
 	type T []byte
+	var N int
 
 	policy.NewRetryPolicy[S, T](
 		policy.NewRetryCountOnErrorCondition[T](10),
@@ -17,7 +18,7 @@ func main() {
 
 	policy.NewRetryPolicy[S, T](
 		policy.NewRetryCountOnErrorWithDelayCondition[T](
-			3,
+			N,
 			func(i int) time.Duration {
 				return time.Duration(i) * time.Second
 			},

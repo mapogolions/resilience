@@ -5,10 +5,10 @@ The retry policy assesses whether further retries are required based on a specif
 
 The library provides convenient helper functions for creating common retry conditions:
 
-- retry a specified number of times (`n`) in case of an error occurrence.
+- retry a specified number of times (`N`) in case of an error occurrence.
 
 ```golang
-policy.NewRetryPolicy[T](policy.NewRetryCountOnErrorCondition[T](n))
+policy.NewRetryPolicy[T](policy.NewRetryCountOnErrorCondition[T](N))
 ```
 
 - retry a specified number (`n`) of times with delays that adapt based on the current attempt
@@ -16,7 +16,7 @@ policy.NewRetryPolicy[T](policy.NewRetryCountOnErrorCondition[T](n))
 ```golang
 policy.NewRetryPolicy[S, T](
     policy.NewRetryCountOnErrorWithDelayCondition[T](
-        n,
+        N,
         func(i int) time.Duration {
             return time.Duration(i) * time.Second
         },
