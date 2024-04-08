@@ -1,7 +1,7 @@
 
 ### Essentials
 
-Policy is a function that knows how to execute another function given as an input argument. It extends or modifies the behavior of the original function without directly altering its code."
+Policy is a function that executes another function provided as an input argument based on encapsulated internal logic. It extends or modifies the behavior of the original function without directly altering its code."
 
 ```golang
 func[S any, T any](context.Context, func(context.Context, S) (T, error), S) (T, error)

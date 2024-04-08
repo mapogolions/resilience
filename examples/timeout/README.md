@@ -16,8 +16,7 @@ f(ctx, s)
 
 #### Pessimistic timeout policy
 
-What's wrong with this approach? This approach is optimistic. The function 'f', from the example above, may ignore context, rarely checking or not
-checking it at all regarding the deadline. Pessimistic timeout policy can help you solve the mentioned problem.
+What's wrong with the standard approach? It tends to be  optimistic. The function 'f', from the example above, may ignore context, either rarely checking it or not checking it at all regarding the deadline. Pessimistic timeout policy can help you solve the mentioned problem.
 
 ```golang
 p := policy.NewTimeoutPolicy[S, T](timeout, policy.PessimisticTimeoutPolicy)
@@ -29,7 +28,7 @@ Please note that this policy doesn't magically change the code of the `f` functi
 
 #### Optimistic timeout policy
 
-Optimistic timeout policy follows the standard approach but with a few unique characteristics.
+Optimistic timeout policy follows the standard approach except some details.
 
 ```golang
 p := policy.NewTimeoutPolicy[S, T](timeout, policy.OptimisticTimeoutPolicy)
