@@ -1,6 +1,6 @@
 ### Timeout policy
 
-Timeout policy limits the execution of a given function in time. Suppose we have a function `f` that accepts context.Context as one of its parameters.
+Timeout policy limits the execution of a given function in time. Suppose we have a function `f` that accepts `context.Context` as one of its parameters.
 
 ```golang
 func f(context.Context, S) (T, error) {}
@@ -16,14 +16,14 @@ f(ctx, s)
 
 #### Pessimistic timeout policy
 
-What's wrong with the standard approach? It tends to be  optimistic. The function 'f', from the example above, may ignore context, either rarely checking it or not checking it at all regarding the deadline. Pessimistic timeout policy can help you solve the mentioned problem.
+What's wrong with the standard approach? It tends to be  optimistic. The function `f`, from the example above, may ignore context, either rarely checking it or not checking it at all regarding the deadline. Pessimistic timeout policy can help you solve the mentioned problem.
 
 ```golang
 p := policy.NewTimeoutPolicy[S, T](timeout, policy.PessimisticTimeoutPolicy)
 r, err := p(context.Background(), f, s)
 ```
 
-Please note that this policy doesn't magically change the code of the `f` function, making it consider the context deadline. The function moves the computation of the `f` function into a separate goroutine. If the goroutine allocated for the computation does not complete within the specified time interval, then the waiting concurrency unit(goroutine) continues execution. It should be noted that the allocated goroutine does not disappear until the 'f' function finishes execution.
+Notice that this policy doesn't magically change the code of the `f` function, making it consider the context deadline. The function moves the computation of the `f` function into a separate goroutine. If the goroutine allocated for the computation does not complete within the specified time interval, then the waiting concurrency unit(goroutine) continues execution. It should be noted that the allocated goroutine does not disappear until the `f` function finishes execution.
 
 
 #### Optimistic timeout policy
