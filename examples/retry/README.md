@@ -11,7 +11,7 @@ The library provides convenient helper functions for creating common retry condi
 policy.NewRetryPolicy[T](policy.NewRetryCountOnErrorCondition[T](N))
 ```
 
-- retry a specified number (`n`) of times with delays that adapt based on the current attempt
+- retry a specified number of times (`N`) with delays that adapt based on the current attempt (`i`)
 
 ```golang
 policy.NewRetryPolicy[S, T](
