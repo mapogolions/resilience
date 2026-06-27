@@ -38,7 +38,6 @@ func debounceFirstPolicy[S any, T any](d time.Duration) resilience.Policy[S, T] 
 			var zero T
 			return zero, ErrDebounced
 		}
-		result, err := f(ctx, s)
-		return result, err
+		return f(ctx, s)
 	}
 }
