@@ -8,6 +8,30 @@ import (
 )
 
 func TestDebounceFirst(t *testing.T) {
+	t.Run("should not suppress calls after debounce window", func(t *testing.T) {
+		// arrange
+		d := 500 * time.Millisecond
+		timer := time.NewTimer(d)
+		defer timer.Stop()
+		policy := NewDebouncePolicy[int, int](d, DebounceFirst)
+		circuite := newSliceIndexer([]int{10, 20, 30})
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// act + assert
+		result, err := policy(ctx, circuite, 1)
+		if err != nil || result != 20 {
+			t.Fail()
+		}
+
+		<-timer.C
+
+		result, err = policy(ctx, circuite, 1)
+		if err != nil || result != 20 {
+			t.Fail()
+		}
+	})
+
 	t.Run("should suppress calls within debounce window", func(t *testing.T) {
 		// arrange
 		policy := NewDebouncePolicy[int, int](1*time.Second, DebounceFirst)
