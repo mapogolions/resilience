@@ -24,12 +24,15 @@ const (
 
 func NewTimeoutPolicy[S any, T any](timeout time.Duration, kind TimeoutPolicyKind) resilience.Policy[S, T] {
 	if kind == OptimisticTimeoutPolicy {
-		return newOptimisticTimeoutPolicy[S, T](timeout)
+		return optimisticTimeout[S, T](timeout)
 	}
-	return newPessimisticTimeoutPolicy[S, T](timeout)
+	if kind == PessimisticTimeoutPolicy {
+		return pessimisticTimeout[S, T](timeout)
+	}
+	panic("not supported")
 }
 
-func newPessimisticTimeoutPolicy[S any, T any](timeout time.Duration) resilience.Policy[S, T] {
+func pessimisticTimeout[S any, T any](timeout time.Duration) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var defaultValue T
 		if ctx.Err() != nil {
@@ -64,7 +67,7 @@ func newPessimisticTimeoutPolicy[S any, T any](timeout time.Duration) resilience
 	}
 }
 
-func newOptimisticTimeoutPolicy[S any, T any](timeout time.Duration) resilience.Policy[S, T] {
+func optimisticTimeout[S any, T any](timeout time.Duration) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var defaultValue T
 		if ctx.Err() != nil {
