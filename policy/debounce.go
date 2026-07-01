@@ -47,37 +47,42 @@ func debounceFirst[S any, T any](d time.Duration) resilience.Policy[S, T] {
 }
 
 func debounceLast[S any, T any](d time.Duration) resilience.Policy[S, T] {
-	var result T
-	var err error
-	m := sync.Mutex{}
-	once := sync.Once{}
+	var (
+		zero, result T
+		err          error = ErrDebounced
+		timer        *time.Timer
+		lastCall     call[S]
+		m            = sync.Mutex{}
+	)
 
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		m.Lock()
 		defer m.Unlock()
 
-		once.Do(func() {
-			timer := time.NewTimer(d)
+		lastCall = call[S]{ctx: ctx, s: s}
 
-			go func() {
-				defer func() {
-					timer.Stop()
-					once = sync.Once{}
-					m.Unlock()
-				}()
+		r, e := result, err
+		if timer != nil {
+			timer.Reset(d)
+			return r, e
+		}
 
-				select {
-				case <-timer.C:
-					m.Lock()
-					result, err = f(ctx, s)
-					return
-				case <-ctx.Done():
-					m.Lock()
-					err = ctx.Err()
-					return
-				}
-			}()
-		})
-		return result, err
+		result, err = zero, ErrDebounced
+		timer = time.NewTimer(d)
+
+		go func() {
+			<-timer.C
+			m.Lock()
+			defer m.Unlock()
+			result, err = f(lastCall.ctx, lastCall.s)
+			timer = nil
+		}()
+
+		return r, e
 	}
+}
+
+type call[S any] struct {
+	ctx context.Context
+	s   S
 }
