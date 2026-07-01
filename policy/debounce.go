@@ -70,6 +70,7 @@ func debounceLast[S any, T any](d time.Duration) resilience.Policy[S, T] {
 		result, err = zero, ErrDebounced
 		timer = time.NewTimer(d)
 
+		// TODO: should be able to cancel last call (ctx.Done)
 		go func() {
 			<-timer.C
 			m.Lock()
