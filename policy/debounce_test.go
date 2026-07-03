@@ -8,7 +8,45 @@ import (
 )
 
 func TestDebounceFirst(t *testing.T) {
+	t.Run("concurrent calls should not block while callback is running", func(t *testing.T) {
+		t.Parallel()
+
+		// arrange
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		policy := NewDebouncePolicy[string, int](10*time.Second, DebounceFirst)
+
+		done := make(chan any)
+		firstCall := make(chan any)
+
+		go func() {
+			defer close(done)
+
+			// Signal once the first invocation starts executing `f`.
+			policy(ctx, func(ctx context.Context, s string) (int, error) {
+				close(firstCall)
+				return spin[string, int](ctx, s)
+			}, "foo")
+		}()
+
+		<-firstCall
+
+		// act
+		result, err := policy(ctx, spin, "foo")
+
+		// assert
+		if !errors.Is(err, ErrDebounced) || result != 0 {
+			t.Fail()
+		}
+
+		cancel()
+		<-done
+	})
+
 	t.Run("should debounce second call within window when context already cancelled", func(t *testing.T) {
+		t.Parallel()
+
 		// arrange
 		policy := NewDebouncePolicy[int, int](5*time.Second, DebounceFirst)
 		f := newSliceIndexer([]int{10, 20, 30})
@@ -83,6 +121,16 @@ func TestDebounceFirst(t *testing.T) {
 			t.Fail()
 		}
 	})
+}
+
+func spin[S, T any](ctx context.Context, _ S) (T, error) {
+	var zero T
+	for {
+		if ctx.Err() != nil {
+			return zero, ctx.Err()
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func newSliceIndexer[T any](items []T) func(context.Context, int) (T, error) {
