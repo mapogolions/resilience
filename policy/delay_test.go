@@ -20,7 +20,7 @@ func TestDelayPolicy(t *testing.T) {
 
 		// act
 		time.AfterFunc(200*time.Millisecond, cancel)
-		result, err := policy(ctx, strlen, "foo")
+		result, err := policy.Bind(strlen)(ctx, "foo")
 
 		// assert
 		if !errors.Is(err, context.Canceled) || result != 0 {

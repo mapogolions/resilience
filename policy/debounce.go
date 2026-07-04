@@ -42,5 +42,4 @@ func debounceFirst[S any, T any](d time.Duration) resilience.Policy[S, T] {
 
 		return f(ctx, s)
 	}
-
 }
