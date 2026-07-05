@@ -24,7 +24,7 @@ func TestRetry(t *testing.T) {
 
 		// act
 		cancel()
-		result, err := g(ctx, 10)
+		result, err := g(ctx, 10) // nil[index] => error
 
 		// assert
 		if !errors.Is(err, context.Canceled) || result != 0 {
