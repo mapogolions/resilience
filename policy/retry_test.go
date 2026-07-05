@@ -2,19 +2,43 @@ package policy
 
 import (
 	"context"
+	"errors"
+	"math"
 	"sync"
 	"testing"
 	"time"
 )
 
 func TestRetry(t *testing.T) {
+	t.Run("should stop retrying when context is canceled", func(t *testing.T) {
+		t.Parallel()
+
+		// arrange
+		retryCount := math.MaxInt
+		shouldRetry := NewRetryCountOnErrorWithDelayCondition[int](retryCount, func(i int) time.Duration {
+			return time.Duration((i + 1) * int(time.Second))
+		})
+		f := newSliceIndexer[int](nil)
+		g := NewRetryPolicy[int](shouldRetry).Bind(f)
+		ctx, cancel := context.WithCancel(context.Background())
+
+		// act
+		cancel()
+		result, err := g(ctx, 10)
+
+		// assert
+		if !errors.Is(err, context.Canceled) || result != 0 {
+			t.Fail()
+		}
+	})
+
 	t.Run("should be possible to configure delay that depends on retries", func(t *testing.T) {
 		// Arrange
 		retryCount := 4
 		shouldRetry := NewRetryCountOnErrorWithDelayCondition[int](retryCount, func(retries int) time.Duration {
 			return time.Duration((retries + 1) * int(time.Millisecond))
 		})
-		policy := NewRetryPolicy[string, int](shouldRetry)
+		policy := NewRetryPolicy[string](shouldRetry)
 
 		// Act
 		start := time.Now()
@@ -33,7 +57,7 @@ func TestRetry(t *testing.T) {
 		retryCount := 3
 		expectedCalls := retryCount + 1
 		shouldRetry := NewRetryCountOnErrorCondition[int](retryCount)
-		policy := NewRetryPolicy[string, int](shouldRetry)
+		policy := NewRetryPolicy[string](shouldRetry)
 
 		// Act + Assert
 		wg := sync.WaitGroup{}
@@ -60,7 +84,7 @@ func TestRetry(t *testing.T) {
 		var calls int
 		retryCount := 3
 		shouldRetry := NewRetryCountOnErrorCondition[int](retryCount)
-		policy := NewRetryPolicy[string, int](shouldRetry)
+		policy := NewRetryPolicy[string](shouldRetry)
 
 		// Act
 		result, err := policy(context.Background(), func(ctx context.Context, s string) (int, error) {
@@ -86,7 +110,7 @@ func TestRetry(t *testing.T) {
 		retryCount := 3
 		expectedCalls := retryCount + 1
 		shouldRetry := NewRetryCountOnErrorCondition[int](retryCount)
-		policy := NewRetryPolicy[string, int](shouldRetry)
+		policy := NewRetryPolicy[string](shouldRetry)
 
 		// Act
 		result, err := policy(context.Background(), func(ctx context.Context, s string) (int, error) {

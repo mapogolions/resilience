@@ -19,8 +19,11 @@ func NewRetryCountOnErrorWithDelayCondition[T any](retryCount int, delayProvider
 	condition := NewRetryCountOnErrorCondition[T](retryCount)
 	return func(ctx context.Context, outcome Outcome[T], retries int) bool {
 		if condition(ctx, outcome, retries) {
-			defer time.Sleep(delayProvider(retries))
-			return true
+			timeout, cancel := context.WithTimeout(ctx, delayProvider(retries))
+			defer cancel()
+			<-timeout.Done()
+			// if ctx.Err() = nil => timeout
+			return ctx.Err() == nil
 		}
 		return false
 	}
