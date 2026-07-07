@@ -10,16 +10,16 @@ import (
 func Delay[S, T any](d time.Duration) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var zero T
-		timeout, cancel := context.WithTimeout(ctx, d)
-		defer cancel()
 
-		<-timeout.Done()
+		timer := time.NewTimer(d)
+		defer timer.Stop()
 
-		if err := ctx.Err(); err != nil {
-			return zero, err
+		select {
+		case <-timer.C:
+			return f(ctx, s)
+
+		case <-ctx.Done():
+			return zero, ctx.Err()
 		}
-
-		// if ctx.Err() == nil => timeout
-		return f(ctx, s)
 	}
 }
