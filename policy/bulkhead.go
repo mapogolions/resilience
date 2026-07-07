@@ -20,9 +20,9 @@ func NewBulkheadPolicy[S any, T any](concurrency int, queue int) resilience.Poli
 	concurrencyLimiter := internal.NewSemaphore(concurrency)
 	queueLimiter := internal.NewSemaphore(concurrency + queue)
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-		var defaultValue T
+		var zero T
 		if !queueLimiter.TryWait() {
-			return defaultValue, ErrBulkheadRejected
+			return zero, ErrBulkheadRejected
 		}
 		concurrencyLimiter.Wait()
 		value, err := f(ctx, s)

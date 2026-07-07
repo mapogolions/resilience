@@ -34,9 +34,9 @@ func NewTimeoutPolicy[S any, T any](timeout time.Duration, kind TimeoutPolicyKin
 
 func pessimisticTimeout[S any, T any](timeout time.Duration) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-		var defaultValue T
+		var zero T
 		if ctx.Err() != nil {
-			return defaultValue, ctx.Err()
+			return zero, ctx.Err()
 		}
 		deadline := time.Now().Add(timeout)
 		timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
@@ -54,24 +54,24 @@ func pessimisticTimeout[S any, T any](timeout time.Duration) resilience.Policy[S
 
 		select {
 		case <-timeoutCtx.Done():
-			return defaultValue, ErrTimeoutRejected
+			return zero, ErrTimeoutRejected
 		case result := <-dataCh:
 			if result.Err == nil {
 				return result.Value, nil
 			}
 			if errors.Is(result.Err, context.DeadlineExceeded) && !isInheritParentTimeout(deadline, ctx) {
-				return defaultValue, ErrTimeoutRejected
+				return zero, ErrTimeoutRejected
 			}
-			return defaultValue, result.Err
+			return zero, result.Err
 		}
 	}
 }
 
 func optimisticTimeout[S any, T any](timeout time.Duration) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-		var defaultValue T
+		var zero T
 		if ctx.Err() != nil {
-			return defaultValue, ctx.Err()
+			return zero, ctx.Err()
 		}
 		deadline := time.Now().Add(timeout)
 		timeoutCtx, timeoutCancel := context.WithDeadline(ctx, deadline)
@@ -79,9 +79,9 @@ func optimisticTimeout[S any, T any](timeout time.Duration) resilience.Policy[S,
 		value, err := f(timeoutCtx, s)
 		if err != nil {
 			if errors.Is(err, context.DeadlineExceeded) && !isInheritParentTimeout(deadline, ctx) {
-				return defaultValue, ErrTimeoutRejected
+				return zero, ErrTimeoutRejected
 			}
-			return defaultValue, err
+			return zero, err
 		}
 		return value, nil
 	}
