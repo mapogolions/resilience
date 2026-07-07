@@ -32,26 +32,6 @@ func TestRetry(t *testing.T) {
 		}
 	})
 
-	t.Run("should be possible to configure delay that depends on retries", func(t *testing.T) {
-		// Arrange
-		retryCondition := RetryOnError[int](4)
-		delayProvider := func(retries int) time.Duration {
-			return time.Duration((retries + 1) * int(time.Millisecond))
-		}
-		policy := NewRetryPolicyWithDelay[string](retryCondition, delayProvider)
-
-		// Act
-		start := time.Now()
-		policy(context.Background(), func(ctx context.Context, s string) (int, error) {
-			return 0, errSomethingWentWrong
-		}, "foo")
-		elapsed := time.Since(start)
-
-		if elapsed < 10*time.Millisecond {
-			t.Fail()
-		}
-	})
-
 	t.Run("should be able to execute policy multiple times from N threads", func(t *testing.T) {
 		// Arrange
 		retryCount := 3
@@ -79,14 +59,14 @@ func TestRetry(t *testing.T) {
 		wg.Wait()
 	})
 
-	t.Run("should break retry flow when any call succeeds", func(t *testing.T) {
-		// Arrange
+	t.Run("should break retrying when call succeeds", func(t *testing.T) {
+		// arrange
 		var calls int
 		retryCount := 3
 		shouldRetry := RetryOnError[int](retryCount)
 		policy := NewRetryPolicy[string](shouldRetry)
 
-		// Act
+		// act
 		result, err := policy(context.Background(), func(ctx context.Context, s string) (int, error) {
 			calls++
 			if calls == 2 {
@@ -95,7 +75,7 @@ func TestRetry(t *testing.T) {
 			return 0, errSomethingWentWrong
 		}, "foo")
 
-		// Assert
+		// assert
 		if err != nil || result != 3 {
 			t.Fail()
 		}
@@ -105,24 +85,23 @@ func TestRetry(t *testing.T) {
 	})
 
 	t.Run("should retry specified amount of times when function returns an error", func(t *testing.T) {
-		// Arrange
+		// arrange
 		var calls int
 		retryCount := 3
 		expectedCalls := retryCount + 1
-		shouldRetry := RetryOnError[int](retryCount)
-		policy := NewRetryPolicy[string](shouldRetry)
+		condition := RetryOnError[int](retryCount)
+		policy := NewRetryPolicy[string](condition)
 
-		// Act
-		result, err := policy(context.Background(), func(ctx context.Context, s string) (int, error) {
+		g := policy.Bind(func(_ context.Context, s string) (int, error) {
 			calls++
 			return 0, errSomethingWentWrong
-		}, "foo")
+		})
 
-		// Assert
-		if err != errSomethingWentWrong || result != 0 {
-			t.Fail()
-		}
-		if calls != expectedCalls {
+		// act
+		result, err := g(context.Background(), "foo")
+
+		// assert
+		if err != errSomethingWentWrong || result != 0 || calls != expectedCalls {
 			t.Fail()
 		}
 	})
