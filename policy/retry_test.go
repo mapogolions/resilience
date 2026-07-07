@@ -14,12 +14,12 @@ func TestRetry(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		retryCount := math.MaxInt
-		shouldRetry := NewRetryCountOnErrorWithDelayCondition[int](retryCount, func(i int) time.Duration {
+		retryCondition := RetryOnError[int](math.MaxInt)
+		delayProvider := func(i int) time.Duration {
 			return time.Duration((i + 1) * int(time.Second))
-		})
+		}
 		f := newSliceIndexer[int](nil)
-		g := NewRetryPolicy[int](shouldRetry).Bind(f)
+		g := NewRetryPolicyWithDelay[int](retryCondition, delayProvider).Bind(f)
 		ctx, cancel := context.WithCancel(context.Background())
 
 		// act
@@ -34,11 +34,11 @@ func TestRetry(t *testing.T) {
 
 	t.Run("should be possible to configure delay that depends on retries", func(t *testing.T) {
 		// Arrange
-		retryCount := 4
-		shouldRetry := NewRetryCountOnErrorWithDelayCondition[int](retryCount, func(retries int) time.Duration {
+		retryCondition := RetryOnError[int](4)
+		delayProvider := func(retries int) time.Duration {
 			return time.Duration((retries + 1) * int(time.Millisecond))
-		})
-		policy := NewRetryPolicy[string](shouldRetry)
+		}
+		policy := NewRetryPolicyWithDelay[string](retryCondition, delayProvider)
 
 		// Act
 		start := time.Now()
@@ -56,7 +56,7 @@ func TestRetry(t *testing.T) {
 		// Arrange
 		retryCount := 3
 		expectedCalls := retryCount + 1
-		shouldRetry := NewRetryCountOnErrorCondition[int](retryCount)
+		shouldRetry := RetryOnError[int](retryCount)
 		policy := NewRetryPolicy[string](shouldRetry)
 
 		// Act + Assert
@@ -83,7 +83,7 @@ func TestRetry(t *testing.T) {
 		// Arrange
 		var calls int
 		retryCount := 3
-		shouldRetry := NewRetryCountOnErrorCondition[int](retryCount)
+		shouldRetry := RetryOnError[int](retryCount)
 		policy := NewRetryPolicy[string](shouldRetry)
 
 		// Act
@@ -109,7 +109,7 @@ func TestRetry(t *testing.T) {
 		var calls int
 		retryCount := 3
 		expectedCalls := retryCount + 1
-		shouldRetry := NewRetryCountOnErrorCondition[int](retryCount)
+		shouldRetry := RetryOnError[int](retryCount)
 		policy := NewRetryPolicy[string](shouldRetry)
 
 		// Act

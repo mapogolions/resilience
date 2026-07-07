@@ -7,37 +7,29 @@ import (
 	"github.com/mapogolions/resilience"
 )
 
-type RetryCondition[T any] func(ctx context.Context, outcome Outcome[T], retries int) bool
+type RetryCondition[T any] func(outcome Outcome[T], retries int) bool
+type DelayProvider func(int) time.Duration
 
-func NewRetryCountOnErrorCondition[T any](retryCount int) RetryCondition[T] {
-	return func(ctx context.Context, outcome Outcome[T], retries int) bool {
+func RetryOnError[T any](retryCount int) RetryCondition[T] {
+	return func(outcome Outcome[T], retries int) bool {
 		return retries < retryCount && outcome.Err != nil
 	}
 }
 
-func NewRetryCountOnErrorWithDelayCondition[T any](retryCount int, delayProvider func(int) time.Duration) RetryCondition[T] {
-	condition := NewRetryCountOnErrorCondition[T](retryCount)
-	return func(ctx context.Context, outcome Outcome[T], retries int) bool {
-		if condition(ctx, outcome, retries) {
-			timeout, cancel := context.WithTimeout(ctx, delayProvider(retries))
-			defer cancel()
-			<-timeout.Done()
-			// if ctx.Err() = nil => timeout
-			return ctx.Err() == nil
-		}
-		return false
-	}
-}
-
-func NewRetryPolicy[S any, T any](shouldRetry RetryCondition[T]) resilience.Policy[S, T] {
+func NewRetryPolicy[S, T any](condition RetryCondition[T]) resilience.Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-		var result T
-		var err error
-		var retries int
+		var (
+			result, zero T
+			err          error
+			retries      int
+		)
 		for {
+			if err := ctx.Err(); err != nil {
+				return zero, err
+			}
 			result, err = f(ctx, s)
 			outcome := Outcome[T]{Result: result, Err: err}
-			if !shouldRetry(ctx, outcome, retries) {
+			if !condition(outcome, retries) {
 				return result, err
 			}
 			retries++
@@ -45,13 +37,42 @@ func NewRetryPolicy[S any, T any](shouldRetry RetryCondition[T]) resilience.Poli
 	}
 }
 
+func NewRetryPolicyWithDelay[S, T any](
+	condition RetryCondition[T],
+	delayProvider DelayProvider) resilience.Policy[S, T] {
+
+	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
+		var (
+			result, zero T
+			err          error
+		)
+		for retries := 0; ; retries++ {
+			if err := ctx.Err(); err != nil {
+				return zero, err
+			}
+			result, err = f(ctx, s)
+			outcome := Outcome[T]{Result: result, Err: err}
+			if !condition(outcome, retries) {
+				return result, err
+			}
+			timer := time.NewTimer(delayProvider(retries))
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return result, ctx.Err()
+			case <-timer.C:
+			}
+		}
+	}
+}
+
 func (rc RetryCondition[T]) Or(conditions ...RetryCondition[T]) RetryCondition[T] {
-	return func(ctx context.Context, outcome Outcome[T], retries int) bool {
-		if rc(ctx, outcome, retries) {
+	return func(outcome Outcome[T], retries int) bool {
+		if rc(outcome, retries) {
 			return true
 		}
 		for _, condition := range conditions {
-			if condition(ctx, outcome, retries) {
+			if condition(outcome, retries) {
 				return true
 			}
 		}
@@ -60,12 +81,12 @@ func (rc RetryCondition[T]) Or(conditions ...RetryCondition[T]) RetryCondition[T
 }
 
 func (rc RetryCondition[T]) And(conditions ...RetryCondition[T]) RetryCondition[T] {
-	return func(ctx context.Context, outcome Outcome[T], retries int) bool {
-		if !rc(ctx, outcome, retries) {
+	return func(outcome Outcome[T], retries int) bool {
+		if !rc(outcome, retries) {
 			return false
 		}
 		for _, condition := range conditions {
-			if !condition(ctx, outcome, retries) {
+			if !condition(outcome, retries) {
 				return false
 			}
 		}
