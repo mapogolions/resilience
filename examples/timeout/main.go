@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/mapogolions/resilience/policy"
+	"github.com/mapogolions/resilience"
 )
 
 func main() {
@@ -21,8 +21,8 @@ func main() {
 	}
 
 	// Optimistic timeout policy
-	policy.NewTimeoutPolicy[S, T](timeout, policy.OptimisticTimeoutPolicy)
+	resilience.NewTimeoutPolicy[S, T](timeout, resilience.OptimisticTimeoutPolicy)
 
 	// Pessimistic timeout policy
-	policy.NewTimeoutPolicy[S, T](timeout, policy.PessimisticTimeoutPolicy)
+	resilience.NewTimeoutPolicy[S, T](timeout, resilience.PessimisticTimeoutPolicy)
 }

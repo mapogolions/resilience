@@ -1,11 +1,9 @@
-package policy
+package resilience
 
 import (
 	"context"
 	"errors"
 	"fmt"
-
-	"github.com/mapogolions/resilience"
 )
 
 type FallbackFunc[T any] func(context.Context, Outcome[T]) (T, error)
@@ -14,14 +12,22 @@ func IdentityFallback[T any](ctx context.Context, outcome Outcome[T]) (T, error)
 	return outcome.Result, outcome.Err
 }
 
-func NewFallbackPolicy[S any, T any](fallback FallbackFunc[T]) resilience.Policy[S, T] {
+func (pf PolicyFunc[S, T]) Fallback(f FallbackFunc[T]) PolicyFunc[S, T] {
+	return NewFallbackPolicy[S, T](f).Bind(pf)
+}
+
+func NewFallbackPolicy[S any, T any](fallback FallbackFunc[T]) Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		result, err := f(ctx, s)
 		return fallback(ctx, Outcome[T]{Result: result, Err: err})
 	}
 }
 
-func NewPanicFallbackPolicy[S any, T any](fallback FallbackFunc[T]) resilience.Policy[S, T] {
+func (pf PolicyFunc[S, T]) PanicFallback(f FallbackFunc[T]) PolicyFunc[S, T] {
+	return NewPanicFallbackPolicy[S, T](f).Bind(pf)
+}
+
+func NewPanicFallbackPolicy[S any, T any](fallback FallbackFunc[T]) Policy[S, T] {
 	policy := NewFallbackPolicy[S, T](fallback)
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		return policy(ctx, func(ctx context.Context, s S) (T, error) {

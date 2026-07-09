@@ -1,16 +1,20 @@
-package policy
+package resilience
 
 import (
 	"context"
 	"errors"
 
-	"github.com/mapogolions/resilience"
 	"github.com/mapogolions/resilience/internal"
 )
 
 var ErrBulkheadRejected = errors.New("bulkhead rejected")
 
-func NewBulkheadPolicy[S any, T any](concurrency int, queue int) resilience.Policy[S, T] {
+func (pf PolicyFunc[S, T]) Bulkhead(concurrency int, queue int) PolicyFunc[S, T] {
+	policy := NewBulkheadPolicy[S, T](concurrency, queue)
+	return policy.Bind(pf)
+}
+
+func NewBulkheadPolicy[S any, T any](concurrency int, queue int) Policy[S, T] {
 	if concurrency < 0 {
 		panic("concurrency must be >= 0")
 	}

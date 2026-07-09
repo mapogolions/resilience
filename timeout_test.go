@@ -1,4 +1,4 @@
-package policy
+package resilience
 
 import (
 	"context"
@@ -92,6 +92,7 @@ func TestOptimisticTimeout(t *testing.T) {
 		_, err := policy(
 			ctx,
 			func(ctx context.Context, n int) (int, error) {
+				<-ctx.Done()
 				for {
 					select {
 					case <-ctx.Done():
@@ -119,13 +120,8 @@ func TestOptimisticTimeout(t *testing.T) {
 		result, err := policy(
 			ctx,
 			func(ctx context.Context, n int) (int, error) {
-				for {
-					select {
-					case <-ctx.Done():
-						return 8, nil
-					case <-time.After(100 * time.Millisecond):
-					}
-				}
+				<-ctx.Done() // track cancellation
+				return 8, nil
 			},
 			10_000,
 		)

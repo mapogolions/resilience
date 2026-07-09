@@ -1,2 +1,2 @@
 test:
-	go test ./policy ./internal
+	go test . ./internal

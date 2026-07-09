@@ -1,10 +1,8 @@
-package policy
+package resilience
 
 import (
 	"context"
 	"time"
-
-	"github.com/mapogolions/resilience"
 )
 
 type RetryCondition[T any] func(outcome Outcome[T], retries int) bool
@@ -16,7 +14,7 @@ func RetryOnError[T any](retryCount int) RetryCondition[T] {
 	}
 }
 
-func NewRetryPolicy[S, T any](condition RetryCondition[T]) resilience.Policy[S, T] {
+func NewRetryPolicy[S, T any](condition RetryCondition[T]) Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var (
 			result, zero T
@@ -39,7 +37,7 @@ func NewRetryPolicy[S, T any](condition RetryCondition[T]) resilience.Policy[S, 
 
 func NewRetryPolicyWithDelay[S, T any](
 	condition RetryCondition[T],
-	delayProvider DelayProvider) resilience.Policy[S, T] {
+	delayProvider DelayProvider) Policy[S, T] {
 
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var (

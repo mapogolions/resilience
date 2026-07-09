@@ -1,13 +1,15 @@
-package policy
+package resilience
 
 import (
 	"context"
 	"time"
-
-	"github.com/mapogolions/resilience"
 )
 
-func Delay[S, T any](d time.Duration) resilience.Policy[S, T] {
+func (pf PolicyFunc[S, T]) Delay(d time.Duration) PolicyFunc[S, T] {
+	return Delay[S, T](d).Bind(pf)
+}
+
+func Delay[S, T any](d time.Duration) Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var zero T
 

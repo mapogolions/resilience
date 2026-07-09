@@ -1,11 +1,9 @@
-package policy
+package resilience
 
 import (
 	"context"
 	"errors"
 	"time"
-
-	"github.com/mapogolions/resilience"
 )
 
 var ErrTimeoutRejected = errors.New("rejected by timeout")
@@ -22,7 +20,7 @@ const (
 	PessimisticTimeoutPolicy TimeoutPolicyKind = 1
 )
 
-func NewTimeoutPolicy[S any, T any](timeout time.Duration, kind TimeoutPolicyKind) resilience.Policy[S, T] {
+func NewTimeoutPolicy[S any, T any](timeout time.Duration, kind TimeoutPolicyKind) Policy[S, T] {
 	if kind == OptimisticTimeoutPolicy {
 		return optimisticTimeout[S, T](timeout)
 	}
@@ -32,7 +30,7 @@ func NewTimeoutPolicy[S any, T any](timeout time.Duration, kind TimeoutPolicyKin
 	panic("not supported")
 }
 
-func pessimisticTimeout[S any, T any](timeout time.Duration) resilience.Policy[S, T] {
+func pessimisticTimeout[S any, T any](timeout time.Duration) Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var zero T
 		if ctx.Err() != nil {
@@ -67,7 +65,7 @@ func pessimisticTimeout[S any, T any](timeout time.Duration) resilience.Policy[S
 	}
 }
 
-func optimisticTimeout[S any, T any](timeout time.Duration) resilience.Policy[S, T] {
+func optimisticTimeout[S any, T any](timeout time.Duration) Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var zero T
 		if ctx.Err() != nil {

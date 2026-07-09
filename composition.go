@@ -1,12 +1,10 @@
-package policy
+package resilience
 
 import (
 	"context"
-
-	"github.com/mapogolions/resilience"
 )
 
-func Compose[S any, T any](outer resilience.Policy[S, T], inner resilience.Policy[S, T]) resilience.Policy[S, T] {
+func Compose[S any, T any](outer Policy[S, T], inner Policy[S, T]) Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		return outer(ctx, func(ctx context.Context, s S) (T, error) {
 			return inner(ctx, f, s)
@@ -14,7 +12,7 @@ func Compose[S any, T any](outer resilience.Policy[S, T], inner resilience.Polic
 	}
 }
 
-func Pipeline[S any, T any](policies ...resilience.Policy[S, T]) resilience.Policy[S, T] {
+func Pipeline[S any, T any](policies ...Policy[S, T]) Policy[S, T] {
 	if len(policies) == 0 {
 		return NewIdentityPolicy[S, T]()
 	}
