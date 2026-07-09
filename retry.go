@@ -23,9 +23,8 @@ func NewRetryPolicy[S, T any](condition RetryCondition[T]) Policy[S, T] {
 		var (
 			result, zero T
 			err          error
-			retries      int
 		)
-		for {
+		for retries := 0; ; retries++ {
 			if err := ctx.Err(); err != nil {
 				return zero, err
 			}
@@ -34,7 +33,6 @@ func NewRetryPolicy[S, T any](condition RetryCondition[T]) Policy[S, T] {
 			if !condition(outcome, retries) {
 				return result, err
 			}
-			retries++
 		}
 	}
 }
