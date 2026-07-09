@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type lockFreeRateLimiter struct {
+type lockFreeTokenBucketRateLimiter struct {
 	freeTokens   *atomic.Int64
 	tokenGenTime *atomic.Int64
 	capacity     int64
@@ -14,14 +14,14 @@ type lockFreeRateLimiter struct {
 	timeProvider timeProvider
 }
 
-func NewLockFreeRateLimiter(tokenPerUnit time.Duration, capacity int64, timeProvider timeProvider) lockFreeRateLimiter {
+func NewLockFreeTokenBucketRateLimiter(tokenPerUnit time.Duration, capacity int64, timeProvider timeProvider) lockFreeTokenBucketRateLimiter {
 	freeTokens := atomic.Int64{}
 	freeTokens.Store(capacity)
 
 	tokenGenTime := atomic.Int64{}
 	tokenGenTime.Store(timeProvider.UtcNow().UnixNano() + tokenPerUnit.Nanoseconds())
 
-	return lockFreeRateLimiter{
+	return lockFreeTokenBucketRateLimiter{
 		freeTokens:   &freeTokens,
 		tokenGenTime: &tokenGenTime,
 		capacity:     capacity,
@@ -30,7 +30,7 @@ func NewLockFreeRateLimiter(tokenPerUnit time.Duration, capacity int64, timeProv
 	}
 }
 
-func (rl lockFreeRateLimiter) Try() (bool, time.Duration) {
+func (rl lockFreeTokenBucketRateLimiter) Try() (bool, time.Duration) {
 	tokenPerUnitNano := rl.tokenPerUnit.Nanoseconds()
 	for {
 		restTokens := rl.freeTokens.Add(-1)
@@ -53,7 +53,8 @@ func (rl lockFreeRateLimiter) Try() (bool, time.Duration) {
 		}
 		if rl.tokenGenTime.CompareAndSwap(curTokenGenTime, nextTokenGenTime) {
 			// give one token to the winner
-			rl.freeTokens.Store(tokens - 1) // TODO: bugfix: race condition
+			// Реализация содержит баг. Возможно состояние гонки!!! Для учебных целей допустимо
+			rl.freeTokens.Store(tokens - 1)
 			return true, 0
 		}
 		runtime.Gosched()

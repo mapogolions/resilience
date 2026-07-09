@@ -11,7 +11,8 @@ func TestRateLimit(t *testing.T) {
 	t.Run("should reject execution and return error when there is no free token", func(t *testing.T) {
 		// Arrange
 		ctx := context.Background()
-		policy := NewTokenBucketRateLimitPolicy[string, int](1*time.Hour, 1)
+		rateLimit := LockFreeTokenBucketRateLimit(1*time.Hour, 1)
+		policy := NewRateLimitPolicy[string, int](rateLimit)
 		var calls []string
 		f := func(ctx context.Context, s string) (int, error) {
 			calls = append(calls, s)
@@ -30,8 +31,8 @@ func TestRateLimit(t *testing.T) {
 
 	t.Run("should permit execution when there are free tokens", func(t *testing.T) {
 		// Arrange
-		shouldLimit := NewTokenBucketRateLimitCondition(1*time.Second, 1)
-		policy := NewRateLimitPolicy[string, int](shouldLimit)
+		rateLimit := LockFreeTokenBucketRateLimit(1*time.Second, 1)
+		policy := NewRateLimitPolicy[string, int](rateLimit)
 		f := func(ctx context.Context, s string) (int, error) {
 			return len(s), nil
 		}
