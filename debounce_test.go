@@ -133,6 +133,9 @@ func spin[S, T any](ctx context.Context, _ S) (T, error) {
 	}
 }
 
+var errOutOfRange = errors.New("out of range")
+var errNullPointer = errors.New("null pointer")
+
 func newSliceIndexer[T any](items []T) func(context.Context, int) (T, error) {
 	return func(ctx context.Context, i int) (T, error) {
 		var zero T
@@ -140,10 +143,10 @@ func newSliceIndexer[T any](items []T) func(context.Context, int) (T, error) {
 			return zero, ctx.Err()
 		}
 		if i < 0 || i > len(items) {
-			return zero, errors.New("out of range exception")
+			return zero, errOutOfRange
 		}
 		if items == nil {
-			return zero, errors.New("null pointer exception")
+			return zero, errNullPointer
 		}
 		return items[i], nil
 	}
