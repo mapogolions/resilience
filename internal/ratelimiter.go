@@ -53,7 +53,7 @@ func (rl lockFreeRateLimiter) Try() (bool, time.Duration) {
 		}
 		if rl.tokenGenTime.CompareAndSwap(curTokenGenTime, nextTokenGenTime) {
 			// give one token to the winner
-			rl.freeTokens.Store(tokens - 1)
+			rl.freeTokens.Store(tokens - 1) // TODO: bugfix: race condition
 			return true, 0
 		}
 		runtime.Gosched()
