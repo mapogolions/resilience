@@ -14,14 +14,17 @@ func RetryOnError[T any](retryCount int) RetryCondition[T] {
 	}
 }
 
+func (pf PolicyFunc[S, T]) Retry(condition RetryCondition[T]) PolicyFunc[S, T] {
+	return NewRetryPolicy[S, T](condition).Bind(pf)
+}
+
 func NewRetryPolicy[S, T any](condition RetryCondition[T]) Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var (
 			result, zero T
 			err          error
-			retries      int
 		)
-		for {
+		for retries := 0; ; retries++ {
 			if err := ctx.Err(); err != nil {
 				return zero, err
 			}
@@ -30,9 +33,15 @@ func NewRetryPolicy[S, T any](condition RetryCondition[T]) Policy[S, T] {
 			if !condition(outcome, retries) {
 				return result, err
 			}
-			retries++
 		}
 	}
+}
+
+func (pf PolicyFunc[S, T]) RetryWithDelay(
+	condition RetryCondition[T],
+	delayProvider DelayProvider) PolicyFunc[S, T] {
+
+	return NewRetryPolicyWithDelay[S, T](condition, delayProvider).Bind(pf)
 }
 
 func NewRetryPolicyWithDelay[S, T any](

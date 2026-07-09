@@ -1,57 +1,51 @@
 package internal
 
 import (
-	"sync"
+	"context"
 )
 
-type semaphore struct {
-	cond      *sync.Cond
-	threshold int
+// BoundedSemaphore is a semaphore with a strict upper bound on the number
+// of concurrently acquired slots (similar to Python's
+// threading.BoundedSemaphore).
+//
+// Wait supports cancellation via ctx.
+//
+// Calling Release without a matching Wait is a programming error and may
+// result in a panic or deadlock.
+
+type boundedSemaphore struct {
+	slots chan struct{}
 }
 
-func NewSemaphore(threshold int) *semaphore {
+func NewBoundedSemaphore(threshold int) *boundedSemaphore {
 	if threshold < 0 {
 		panic("semaphore initial value must be >= 0")
 	}
-	mutex := sync.Mutex{}
-	return &semaphore{cond: sync.NewCond(&mutex), threshold: threshold}
+	return &boundedSemaphore{slots: make(chan struct{}, threshold)}
 }
 
-func (b *semaphore) TryWait() bool {
-	b.cond.L.Lock()
-	if b.threshold > 0 {
-		b.threshold--
-		b.cond.L.Unlock()
+func (s *boundedSemaphore) TryWait() bool {
+	select {
+	case s.slots <- struct{}{}:
 		return true
+	default:
 	}
-	b.cond.L.Unlock()
 	return false
 }
 
-func (b *semaphore) Wait() {
-	b.cond.L.Lock()
-	if b.threshold > 0 {
-		b.threshold--
-		b.cond.L.Unlock()
-		return
+func (s *boundedSemaphore) Wait(ctx context.Context) error {
+	select {
+	case s.slots <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
-
-	for {
-		b.cond.Wait()
-		if b.threshold > 0 {
-			break
-		}
-	}
-	b.threshold--
-	b.cond.L.Unlock()
 }
 
-func (b *semaphore) Release() {
-	b.cond.L.Lock()
-	v := b.threshold
-	b.threshold++
-	if v == 0 { // or b.threshold == 1
-		b.cond.Broadcast()
+func (s *boundedSemaphore) Release() {
+	select {
+	case <-s.slots:
+	default:
+		panic("sem: release without matching wait")
 	}
-	b.cond.L.Unlock()
 }

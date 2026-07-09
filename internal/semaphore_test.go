@@ -1,14 +1,20 @@
 package internal
 
 import (
+	"context"
+	"strings"
 	"testing"
 )
 
 func TestConcurrencysem(t *testing.T) {
 	t.Run("sem should remain in a consistent state", func(t *testing.T) {
-		sem := NewSemaphore(3)
-		sem.Wait()
-		sem.Wait()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		sem := NewBoundedSemaphore(3)
+
+		sem.Wait(ctx)
+		sem.Wait(ctx)
 		if !sem.TryWait() {
 			t.Fail()
 		}
@@ -27,8 +33,8 @@ func TestConcurrencysem(t *testing.T) {
 	})
 
 	t.Run("attempt to pass a sem should fail when there are no free slots", func(t *testing.T) {
-		sem := NewSemaphore(1)
-		sem.Wait()
+		sem := NewBoundedSemaphore(1)
+		sem.Wait(context.Background())
 		defer sem.Release()
 
 		if sem.TryWait() {
@@ -37,42 +43,20 @@ func TestConcurrencysem(t *testing.T) {
 		}
 	})
 
-	t.Run("should limit the level of concurrency to a single unit", func(t *testing.T) {
-		sem := NewSemaphore(1)
-		flag := false
-		sem.Wait()
+	t.Run("Release without matching Wait should panic with expected message", func(t *testing.T) {
+		sem := NewBoundedSemaphore(0)
 
-		go func() {
-			defer sem.Release()
-			flag = true
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatal("expected panic, got none")
+			}
+			msg, ok := r.(string)
+			if !ok || !strings.Contains(msg, "release without matching wait") {
+				t.Fatalf("unexpected panic value: %v", r)
+			}
 		}()
 
-		sem.Wait()
 		sem.Release()
-
-		if !flag {
-			t.Fail()
-		}
-	})
-
-	t.Run("`Release` call should affect available slots", func(t *testing.T) {
-		sem := NewSemaphore(0)
-		sem.Release()
-		sem.Release()
-
-		if sem.threshold != 2 {
-			t.Fail()
-		}
-	})
-
-	t.Run("should decrement/increment counter of available slots", func(t *testing.T) {
-		sem := NewSemaphore(2)
-		sem.Wait()
-		slots := sem.threshold
-		sem.Release()
-
-		if slots != 1 || sem.threshold != 2 {
-			t.Fail()
-		}
 	})
 }

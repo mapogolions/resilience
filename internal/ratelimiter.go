@@ -14,7 +14,11 @@ type lockFreeTokenBucketRateLimiter struct {
 	timeProvider timeProvider
 }
 
-func NewLockFreeTokenBucketRateLimiter(tokenPerUnit time.Duration, capacity int64, timeProvider timeProvider) lockFreeTokenBucketRateLimiter {
+func NewLockFreeTokenBucketRateLimiter(
+	tokenPerUnit time.Duration,
+	capacity int64,
+	timeProvider timeProvider) lockFreeTokenBucketRateLimiter {
+
 	freeTokens := atomic.Int64{}
 	freeTokens.Store(capacity)
 

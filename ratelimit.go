@@ -17,8 +17,8 @@ func LockFreeTokenBucketRateLimit(tokenPerUnit time.Duration, capacity int64) Ra
 	return rateLimiter.Try
 }
 
-func (pf PolicyFunc[S, T]) RateLimit(limitCondition RateLimit) PolicyFunc[S, T] {
-	return NewRateLimitPolicy[S, T](limitCondition).Bind(pf)
+func (pf PolicyFunc[S, T]) RateLimit(rateLimit RateLimit) PolicyFunc[S, T] {
+	return NewRateLimitPolicy[S, T](rateLimit).Bind(pf)
 }
 
 func NewRateLimitPolicy[S any, T any](rateLimit RateLimit) Policy[S, T] {

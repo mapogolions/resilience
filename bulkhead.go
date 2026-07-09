@@ -21,17 +21,20 @@ func NewBulkheadPolicy[S any, T any](concurrency int, queue int) Policy[S, T] {
 	if queue < 0 {
 		panic("queue must be >= 0")
 	}
-	concurrencyLimiter := internal.NewSemaphore(concurrency)
-	queueLimiter := internal.NewSemaphore(concurrency + queue)
+
+	concurrencyLimiter := internal.NewBoundedSemaphore(concurrency)
+	queueLimiter := internal.NewBoundedSemaphore(concurrency + queue)
+
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		var zero T
 		if !queueLimiter.TryWait() {
 			return zero, ErrBulkheadRejected
 		}
-		concurrencyLimiter.Wait()
-		value, err := f(ctx, s)
-		concurrencyLimiter.Release()
-		queueLimiter.Release()
-		return value, err
+		defer queueLimiter.Release()
+		if err := concurrencyLimiter.Wait(ctx); err != nil {
+			return zero, err
+		}
+		defer concurrencyLimiter.Release()
+		return f(ctx, s)
 	}
 }
