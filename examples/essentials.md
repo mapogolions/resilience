@@ -10,7 +10,7 @@ func[S any, T any](context.Context, func(context.Context, S) (T, error), S) (T, 
 You are free to implement your own policy. For example, in the snippet below, the `delay` policy executes the original function with a specified delay. This functionality could be particularly useful during unit tests.
 
 ```golang
-func delay[S any, T any](d time.Duration) resilience.Policy[S, T] {
+func delay[S any, T any](d time.Duration) Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		time.Sleep(d)
 		return f(ctx, s)

@@ -1,11 +1,10 @@
-package policy
+package resilience
 
 import (
 	"context"
 	"errors"
 	"time"
 
-	"github.com/mapogolions/resilience"
 	"github.com/mapogolions/resilience/internal"
 )
 
@@ -18,16 +17,16 @@ func NewTokenBucketRateLimitCondition(tokenPerUnit time.Duration, capacity int64
 	return rateLimiter.Try
 }
 
-func NewTokenBucketRateLimitPolicy[S any, T any](tokenPerUnit time.Duration, capacity int64) resilience.Policy[S, T] {
+func NewTokenBucketRateLimitPolicy[S any, T any](tokenPerUnit time.Duration, capacity int64) Policy[S, T] {
 	shouldLimit := NewTokenBucketRateLimitCondition(tokenPerUnit, capacity)
 	return NewRateLimitPolicy[S, T](shouldLimit)
 }
 
-func NewRateLimitPolicy[S any, T any](shouldLimit RateLimitCondition) resilience.Policy[S, T] {
-	var defaultT T
+func NewRateLimitPolicy[S any, T any](shouldLimit RateLimitCondition) Policy[S, T] {
+	var zero T
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		if ok, _ := shouldLimit(); !ok {
-			return defaultT, ErrRateLimitRejected
+			return zero, ErrRateLimitRejected
 		}
 		return f(ctx, s)
 	}

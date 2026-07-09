@@ -1,30 +1,19 @@
-package policy
+package resilience
 
 import (
 	"context"
 	"errors"
 	"sync"
 	"time"
-
-	"github.com/mapogolions/resilience"
 )
 
 var ErrDebounced = errors.New("call debounced")
 
-type DebouncePolicyKind int
-
-const (
-	DebounceFirst DebouncePolicyKind = 0
-)
-
-func NewDebouncePolicy[S any, T any](d time.Duration, kind DebouncePolicyKind) resilience.Policy[S, T] {
-	if kind == DebounceFirst {
-		return debounceFirst[S, T](d)
-	}
-	panic("not supported")
+func (pf PolicyFunc[S, T]) DebounceFirst(d time.Duration) PolicyFunc[S, T] {
+	return NewDebounceFirstPolicy[S, T](d).Bind(pf)
 }
 
-func debounceFirst[S any, T any](d time.Duration) resilience.Policy[S, T] {
+func NewDebounceFirstPolicy[S any, T any](d time.Duration) Policy[S, T] {
 	var lastCallTime time.Time
 	m := sync.Mutex{}
 

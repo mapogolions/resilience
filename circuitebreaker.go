@@ -1,11 +1,10 @@
-package policy
+package resilience
 
 import (
 	"context"
 	"errors"
 	"time"
 
-	"github.com/mapogolions/resilience"
 	"github.com/mapogolions/resilience/internal"
 )
 
@@ -37,7 +36,7 @@ func NewConsecutiveFailuresCircuitBreaker[T any](
 	}
 }
 
-func NewCircuitBreakerPolicy[S any, T any](circuitBreaker CircuitBreaker[T]) resilience.Policy[S, T] {
+func NewCircuitBreakerPolicy[S any, T any](circuitBreaker CircuitBreaker[T]) Policy[S, T] {
 	var defaltT T
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		if continuation, ok := circuitBreaker(); ok {

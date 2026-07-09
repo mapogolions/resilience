@@ -1,4 +1,4 @@
-package policy
+package resilience
 
 import (
 	"context"
@@ -15,7 +15,7 @@ func TestDebounceFirst(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		policy := NewDebouncePolicy[string, int](10*time.Second, DebounceFirst)
+		policy := NewDebounceFirstPolicy[string, int](10 * time.Second)
 
 		done := make(chan any)
 		firstCall := make(chan any)
@@ -48,7 +48,7 @@ func TestDebounceFirst(t *testing.T) {
 		t.Parallel()
 
 		// arrange
-		policy := NewDebouncePolicy[int, int](5*time.Second, DebounceFirst)
+		policy := NewDebounceFirstPolicy[int, int](5 * time.Second)
 		f := newSliceIndexer([]int{10, 20, 30})
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -65,7 +65,7 @@ func TestDebounceFirst(t *testing.T) {
 
 	t.Run("should return cancelled error when context already cancelled", func(t *testing.T) {
 		// arrange
-		policy := NewDebouncePolicy[int, int](5*time.Second, DebounceFirst)
+		policy := NewDebounceFirstPolicy[int, int](5 * time.Second)
 		f := newSliceIndexer([]int{10, 20, 30})
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -83,7 +83,7 @@ func TestDebounceFirst(t *testing.T) {
 		// arrange
 		d := 200 * time.Millisecond
 		timer := time.NewTimer(d * 2)
-		policy := NewDebouncePolicy[int, int](d, DebounceFirst)
+		policy := NewDebounceFirstPolicy[int, int](d)
 		f := newSliceIndexer([]int{10, 20, 30})
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -104,7 +104,7 @@ func TestDebounceFirst(t *testing.T) {
 
 	t.Run("should suppress calls within debounce window", func(t *testing.T) {
 		// arrange
-		policy := NewDebouncePolicy[int, int](5*time.Second, DebounceFirst)
+		policy := NewDebounceFirstPolicy[int, int](5 * time.Second)
 		f := newSliceIndexer([]int{10, 20, 30})
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
