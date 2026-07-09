@@ -5,7 +5,7 @@ import (
 )
 
 func (pf PolicyFunc[S, T]) Identity() PolicyFunc[S, T] {
-	return NewIdentityPolicy[S, T]().Bind(pf)
+	return pf
 }
 
 func NewIdentityPolicy[S any, T any]() Policy[S, T] {
