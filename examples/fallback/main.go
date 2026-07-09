@@ -3,22 +3,22 @@ package main
 import (
 	"context"
 
-	"github.com/mapogolions/resilience/policy"
+	"github.com/mapogolions/resilience"
 )
 
 func main() {
 	type S string
 	type T []byte
 
-	policy.NewFallbackPolicy[S, T](policy.IdentityFallback[T])
+	resilience.NewFallbackPolicy[S, T](resilience.IdentityFallback[T])
 
-	policy.NewFallbackPolicy[S, T](func(ctx context.Context, o policy.Outcome[T]) (T, error) {
+	resilience.NewFallbackPolicy[S, T](func(ctx context.Context, o resilience.Outcome[T]) (T, error) {
 		panic("not implemented")
 	})
 
-	policy.NewPanicFallbackPolicy[S, T](policy.IdentityFallback[T])
+	resilience.NewPanicFallbackPolicy[S, T](resilience.IdentityFallback[T])
 
-	policy.NewPanicFallbackPolicy[S, T](func(ctx context.Context, o policy.Outcome[T]) (T, error) {
+	resilience.NewPanicFallbackPolicy[S, T](func(ctx context.Context, o resilience.Outcome[T]) (T, error) {
 		panic("not implemented")
 	})
 }

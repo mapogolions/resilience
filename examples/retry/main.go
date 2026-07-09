@@ -1,14 +1,14 @@
 package main
 
 import (
-	"github.com/mapogolions/resilience/policy"
+	"github.com/mapogolions/resilience"
 )
 
 func main() {
 	type S string
 	type T []byte
 
-	policy.NewRetryPolicy[S, T](
-		policy.RetryOnError[T](10),
+	resilience.NewRetryPolicy[S, T](
+		resilience.RetryOnError[T](10),
 	)
 }
