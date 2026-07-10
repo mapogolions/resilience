@@ -32,6 +32,15 @@ func TestConcurrencysem(t *testing.T) {
 		sem.Release()
 	})
 
+	t.Run("should be able to cancel wait", func(t *testing.T) {
+		sem := NewBoundedSemaphore(0)
+		ctx, cancel := context.WithCancel(context.Background())
+		go func() {
+			cancel()
+		}()
+		sem.Wait(ctx)
+	})
+
 	t.Run("attempt to pass a sem should fail when there are no free slots", func(t *testing.T) {
 		sem := NewBoundedSemaphore(1)
 		sem.Wait(context.Background())
