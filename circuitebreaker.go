@@ -15,12 +15,17 @@ type CircuitFunc[T any] func(CircuitCommit[T]) (T, error)
 type CircuitContinuation[T any] func(CircuitFunc[T]) (T, error)
 type CircuitBreaker[T any] func() (CircuitContinuation[T], bool)
 
-func NewConsecutiveFailuresCircuitBreaker[T any](
+func ConsecutiveFailuresCircuitBreaker[T any](
 	failureThreshold int,
 	breakDuration time.Duration,
 	condition OutcomeAcceptanceCondition[T],
 ) CircuitBreaker[T] {
-	circuitBreaker := internal.NewCircuitBreaker[T](failureThreshold, breakDuration, internal.DefaultTimeProvider)
+
+	circuitBreaker := internal.NewCircuitBreaker[T](
+		failureThreshold,
+		breakDuration,
+		internal.DefaultTimeProvider)
+
 	var commit CircuitCommit[T] = func(result T, err error) {
 		if condition(Outcome[T]{Result: result, Err: err}) {
 			circuitBreaker.Success()
@@ -28,6 +33,7 @@ func NewConsecutiveFailuresCircuitBreaker[T any](
 			circuitBreaker.Failure(result, err)
 		}
 	}
+
 	return func() (CircuitContinuation[T], bool) {
 		if circuitBreaker.IsCircuitOpen() {
 			return nil, false
@@ -36,10 +42,11 @@ func NewConsecutiveFailuresCircuitBreaker[T any](
 	}
 }
 
-func NewCircuitBreakerPolicy[S any, T any](circuitBreaker CircuitBreaker[T]) Policy[S, T] {
-	var defaltT T
+func NewCircuitBreakerPolicy[S any, T any](cb CircuitBreaker[T]) Policy[S, T] {
+	var zero T
+
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-		if continuation, ok := circuitBreaker(); ok {
+		if continuation, ok := cb(); ok {
 			fn := func(commit CircuitCommit[T]) (T, error) {
 				result, err := f(ctx, s)
 				commit(result, err)
@@ -47,6 +54,7 @@ func NewCircuitBreakerPolicy[S any, T any](circuitBreaker CircuitBreaker[T]) Pol
 			}
 			return continuation(fn)
 		}
-		return defaltT, ErrCircuitBroken
+
+		return zero, ErrCircuitBroken
 	}
 }
