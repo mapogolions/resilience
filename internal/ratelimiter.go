@@ -57,7 +57,9 @@ func (rl lockFreeTokenBucketRateLimiter) Try() (bool, time.Duration) {
 		}
 		if rl.tokenGenTime.CompareAndSwap(curTokenGenTime, nextTokenGenTime) {
 			// give one token to the winner
-			// Реализация содержит баг. Возможно состояние гонки!!! Для учебных целей допустимо
+			//
+			// The implementation contains a bug. A race condition may be possible!!!
+			// This is acceptable for educational purposes.
 			rl.freeTokens.Store(tokens - 1)
 			return true, 0
 		}
