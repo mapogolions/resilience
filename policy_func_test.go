@@ -17,8 +17,8 @@ func TestPolicyFunc(t *testing.T) {
 			return 0, errSomethingWentWrong
 		}
 		f := strlen.
-			Fallback(func(ctx context.Context, o Outcome[int]) (int, error) {
-				if errors.Is(o.Err, errSomethingWentWrong) {
+			Fallback(func(ctx context.Context, _ int, err error) (int, error) {
+				if errors.Is(err, errSomethingWentWrong) {
 					return 10, nil
 				}
 				panic("unreachable code")
@@ -46,8 +46,8 @@ func TestPolicyFunc(t *testing.T) {
 		}
 		f := strlen.
 			Retry(RetryOnError[int](2)).
-			Fallback(func(ctx context.Context, o Outcome[int]) (int, error) {
-				if errors.Is(o.Err, errSomethingWentWrong) {
+			Fallback(func(ctx context.Context, _ int, err error) (int, error) {
+				if errors.Is(err, errSomethingWentWrong) {
 					return 10, nil
 				}
 				panic("unreachable code")

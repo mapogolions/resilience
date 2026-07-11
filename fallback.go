@@ -6,10 +6,10 @@ import (
 	"fmt"
 )
 
-type FallbackFunc[T any] func(context.Context, Outcome[T]) (T, error)
+type FallbackFunc[T any] func(context.Context, T, error) (T, error)
 
-func IdentityFallback[T any](ctx context.Context, outcome Outcome[T]) (T, error) {
-	return outcome.Result, outcome.Err
+func IdentityFallback[T any](ctx context.Context, result T, err error) (T, error) {
+	return result, err
 }
 
 func (pf PolicyFunc[S, T]) Fallback(f FallbackFunc[T]) PolicyFunc[S, T] {
@@ -19,7 +19,7 @@ func (pf PolicyFunc[S, T]) Fallback(f FallbackFunc[T]) PolicyFunc[S, T] {
 func NewFallbackPolicy[S any, T any](fallback FallbackFunc[T]) Policy[S, T] {
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		result, err := f(ctx, s)
-		return fallback(ctx, Outcome[T]{Result: result, Err: err})
+		return fallback(ctx, result, err)
 	}
 }
 

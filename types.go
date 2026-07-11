@@ -11,13 +11,6 @@ func (p Policy[S, T]) Bind(f PolicyFunc[S, T]) PolicyFunc[S, T] {
 	}
 }
 
-type Outcome[T any] struct {
-	Result T
-	Err    error
-}
-
-type OutcomeAcceptanceCondition[T any] func(Outcome[T]) bool
-
-func RejectOnError[T any](outcome Outcome[T]) bool {
-	return outcome.Err == nil
+func RejectOnError[T any](_ T, err error) bool {
+	return err == nil
 }

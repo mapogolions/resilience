@@ -16,7 +16,7 @@ type CircuitBreaker[T any] func() (CircuitCommit[T], bool)
 func ConsecutiveFailuresCircuitBreaker[T any](
 	failureThreshold int,
 	breakDuration time.Duration,
-	condition OutcomeAcceptanceCondition[T],
+	p func(T, error) bool,
 ) CircuitBreaker[T] {
 
 	circuitBreaker := internal.NewCircuitBreaker[T](
@@ -25,7 +25,7 @@ func ConsecutiveFailuresCircuitBreaker[T any](
 		internal.DefaultTimeProvider)
 
 	var commit CircuitCommit[T] = func(result T, err error) {
-		if condition(Outcome[T]{Result: result, Err: err}) {
+		if p(result, err) {
 			circuitBreaker.Success()
 		} else {
 			circuitBreaker.Failure(result, err)

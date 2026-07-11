@@ -5,12 +5,12 @@ import (
 	"time"
 )
 
-type RetryCondition[T any] func(outcome Outcome[T], retries int) bool
+type RetryCondition[T any] func(result T, err error, retries int) bool
 type DelayProvider func(int) time.Duration
 
 func RetryOnError[T any](retryCount int) RetryCondition[T] {
-	return func(outcome Outcome[T], retries int) bool {
-		return retries < retryCount && outcome.Err != nil
+	return func(_ T, err error, retries int) bool {
+		return retries < retryCount && err != nil
 	}
 }
 
@@ -29,8 +29,7 @@ func NewRetryPolicy[S, T any](condition RetryCondition[T]) Policy[S, T] {
 				return zero, err
 			}
 			result, err = f(ctx, s)
-			outcome := Outcome[T]{Result: result, Err: err}
-			if !condition(outcome, retries) {
+			if !condition(result, err, retries) {
 				return result, err
 			}
 		}
@@ -58,8 +57,7 @@ func NewRetryPolicyWithDelay[S, T any](
 				return zero, err
 			}
 			result, err = f(ctx, s)
-			outcome := Outcome[T]{Result: result, Err: err}
-			if !condition(outcome, retries) {
+			if !condition(result, err, retries) {
 				return result, err
 			}
 			timer := time.NewTimer(delayProvider(retries))
@@ -74,12 +72,12 @@ func NewRetryPolicyWithDelay[S, T any](
 }
 
 func (rc RetryCondition[T]) Or(conditions ...RetryCondition[T]) RetryCondition[T] {
-	return func(outcome Outcome[T], retries int) bool {
-		if rc(outcome, retries) {
+	return func(result T, err error, retries int) bool {
+		if rc(result, err, retries) {
 			return true
 		}
 		for _, condition := range conditions {
-			if condition(outcome, retries) {
+			if condition(result, err, retries) {
 				return true
 			}
 		}
@@ -88,12 +86,12 @@ func (rc RetryCondition[T]) Or(conditions ...RetryCondition[T]) RetryCondition[T
 }
 
 func (rc RetryCondition[T]) And(conditions ...RetryCondition[T]) RetryCondition[T] {
-	return func(outcome Outcome[T], retries int) bool {
-		if !rc(outcome, retries) {
+	return func(result T, err error, retries int) bool {
+		if !rc(result, err, retries) {
 			return false
 		}
 		for _, condition := range conditions {
-			if !condition(outcome, retries) {
+			if !condition(result, err, retries) {
 				return false
 			}
 		}
