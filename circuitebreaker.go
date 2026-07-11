@@ -11,9 +11,7 @@ import (
 var ErrCircuitBroken error = errors.New("circuit broken")
 
 type CircuitCommit[T any] func(T, error)
-type CircuitFunc[T any] func(CircuitCommit[T]) (T, error)
-type CircuitContinuation[T any] func(CircuitFunc[T]) (T, error)
-type CircuitBreaker[T any] func() (CircuitContinuation[T], bool)
+type CircuitBreaker[T any] func() (CircuitCommit[T], bool)
 
 func ConsecutiveFailuresCircuitBreaker[T any](
 	failureThreshold int,
@@ -34,11 +32,11 @@ func ConsecutiveFailuresCircuitBreaker[T any](
 		}
 	}
 
-	return func() (CircuitContinuation[T], bool) {
+	return func() (CircuitCommit[T], bool) {
 		if circuitBreaker.IsCircuitOpen() {
 			return nil, false
 		}
-		return func(cbf CircuitFunc[T]) (T, error) { return cbf(commit) }, true
+		return commit, true
 	}
 }
 
@@ -46,15 +44,12 @@ func NewCircuitBreakerPolicy[S any, T any](cb CircuitBreaker[T]) Policy[S, T] {
 	var zero T
 
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
-		if continuation, ok := cb(); ok {
-			fn := func(commit CircuitCommit[T]) (T, error) {
-				result, err := f(ctx, s)
-				commit(result, err)
-				return result, err
-			}
-			return continuation(fn)
+		commit, ok := cb()
+		if !ok {
+			return zero, ErrCircuitBroken
 		}
-
-		return zero, ErrCircuitBroken
+		result, err := f(ctx, s)
+		commit(result, err)
+		return result, err
 	}
 }
