@@ -29,7 +29,11 @@ type circuitBreaker[T any] struct {
 	lastErr             error
 }
 
-func NewCircuitBreaker[T any](failureThreshold int, breakDuration time.Duration, timeProvider timeProvider) *circuitBreaker[T] {
+func NewCircuitBreaker[T any](
+	failureThreshold int,
+	breakDuration time.Duration,
+	timeProvider timeProvider) *circuitBreaker[T] {
+
 	return &circuitBreaker[T]{
 		state:            circuitStateClosed,
 		failureThreshold: failureThreshold,
@@ -38,15 +42,7 @@ func NewCircuitBreaker[T any](failureThreshold int, breakDuration time.Duration,
 	}
 }
 
-func (cb *circuitBreaker[T]) LastResult() T {
-	return cb.lastResult
-}
-
-func (cb *circuitBreaker[T]) LastError() error {
-	return cb.lastErr
-}
-
-func (cb *circuitBreaker[T]) SetBreakTill() {
+func (cb *circuitBreaker[T]) setBreakTill() {
 	cb.breakTill = cb.timeProvider.UtcNow().Add(cb.breakDuration)
 }
 
@@ -90,12 +86,12 @@ func (cb *circuitBreaker[T]) Failure(result T, err error) {
 		break
 	case circuitStateHalfOpen:
 		cb.state = circuitStateOpen
-		cb.SetBreakTill()
+		cb.setBreakTill()
 	case circuitStateClosed:
 		cb.consecutiveFailures++
 		if cb.consecutiveFailures >= cb.failureThreshold {
 			cb.state = circuitStateOpen
-			cb.SetBreakTill()
+			cb.setBreakTill()
 		}
 	default:
 		panic(ErrInvalidCircuitState)
