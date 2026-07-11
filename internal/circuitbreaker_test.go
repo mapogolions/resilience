@@ -16,11 +16,11 @@ func TestCircuitBreaker(t *testing.T) {
 		// Act
 		cb.Failure(-1, errors.New("err1"))
 		timeProvider.Advance(breakDuration)
-		cb.IsCircuitOpen() // half open state
+		cb.TryAcquire() // half open state
 		cb.Success()
 
 		// Assert
-		if cb.IsCircuitOpen() {
+		if !cb.TryAcquire() {
 			t.Fail()
 		}
 
@@ -43,11 +43,11 @@ func TestCircuitBreaker(t *testing.T) {
 		// Act
 		cb.Failure(-1, errors.New("err1"))
 		timeProvider.Advance(breakDuration)
-		cb.IsCircuitOpen() // half open state
+		cb.TryAcquire() // half open state
 		cb.Failure(-2, errors.New("err2"))
 
 		// Assert
-		if !cb.IsCircuitOpen() {
+		if cb.TryAcquire() {
 			t.Fail()
 		}
 		if timeProvider.UtcNow().Add(breakDuration) != cb.breakTill {
@@ -62,7 +62,7 @@ func TestCircuitBreaker(t *testing.T) {
 		cb.Failure(-1, errors.New("err1"))
 		timeProvider.Advance(breakDuration)
 
-		if cb.IsCircuitOpen() || cb.state != circuitStateHalfOpen {
+		if !cb.TryAcquire() || cb.state != circuitStateHalfOpen {
 			t.Fail()
 		}
 	})
@@ -74,7 +74,7 @@ func TestCircuitBreaker(t *testing.T) {
 		cb.Failure(-2, errors.New("err2"))
 		timeProvider.Advance(1 * time.Second)
 
-		if !cb.IsCircuitOpen() {
+		if cb.TryAcquire() {
 			t.Fail()
 		}
 	})
@@ -95,7 +95,7 @@ func TestCircuitBreaker(t *testing.T) {
 		cb.Failure(-1, errors.New("err1"))
 		cb.Failure(-2, errors.New("err2"))
 
-		if !cb.IsCircuitOpen() {
+		if cb.TryAcquire() {
 			t.Fail()
 		}
 	})
@@ -104,7 +104,7 @@ func TestCircuitBreaker(t *testing.T) {
 		cb := NewCircuitBreaker[int](2, 1*time.Second, DefaultTimeProvider)
 		cb.Failure(-1, errors.New("err1"))
 
-		if cb.IsCircuitOpen() || cb.consecutiveFailures != 1 {
+		if !cb.TryAcquire() || cb.consecutiveFailures != 1 {
 			t.Fail()
 		}
 	})
@@ -112,7 +112,7 @@ func TestCircuitBreaker(t *testing.T) {
 	t.Run("circuit should be closed by default", func(t *testing.T) {
 		cb := NewCircuitBreaker[int](2, 2*time.Second, DefaultTimeProvider)
 
-		if cb.IsCircuitOpen() {
+		if !cb.TryAcquire() {
 			t.Fail()
 		}
 	})

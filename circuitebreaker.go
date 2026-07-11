@@ -33,10 +33,10 @@ func ConsecutiveFailuresCircuitBreaker[T any](
 	}
 
 	return func() (CircuitCommit[T], bool) {
-		if circuitBreaker.IsCircuitOpen() {
-			return nil, false
+		if circuitBreaker.TryAcquire() {
+			return commit, true
 		}
-		return commit, true
+		return nil, false
 	}
 }
 

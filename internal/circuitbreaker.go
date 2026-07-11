@@ -50,20 +50,17 @@ func (cb *circuitBreaker[T]) SetBreakTill() {
 	cb.breakTill = cb.timeProvider.UtcNow().Add(cb.breakDuration)
 }
 
-func (cb *circuitBreaker[T]) IsCircuitOpen() bool {
-	if cb.state != circuitStateOpen {
-		return false
-	}
+func (cb *circuitBreaker[T]) TryAcquire() bool {
 	cb.Lock()
 	defer cb.Unlock()
-	if cb.state != circuitStateOpen {
-		return false
+
+	if cb.state == circuitStateOpen {
+		if cb.timeProvider.UtcNow().Before(cb.breakTill) {
+			return false
+		}
+		cb.state = circuitStateHalfOpen
 	}
-	if cb.timeProvider.UtcNow().Before(cb.breakTill) {
-		return true
-	}
-	cb.state = circuitStateHalfOpen
-	return false
+	return true
 }
 
 func (cb *circuitBreaker[T]) Success() {
