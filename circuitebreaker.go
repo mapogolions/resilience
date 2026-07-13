@@ -40,6 +40,10 @@ func ConsecutiveFailuresCircuitBreaker[T any](
 	}
 }
 
+func (pf PolicyFunc[S, T]) CircuitBreaker(cb CircuitBreaker[T]) PolicyFunc[S, T] {
+	return NewCircuitBreakerPolicy[S, T](cb).Bind(pf)
+}
+
 func NewCircuitBreakerPolicy[S any, T any](cb CircuitBreaker[T]) Policy[S, T] {
 	var zero T
 
