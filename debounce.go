@@ -14,19 +14,19 @@ func (pf PolicyFunc[S, T]) DebounceFirst(d time.Duration) PolicyFunc[S, T] {
 }
 
 func NewDebounceFirstPolicy[S any, T any](d time.Duration) Policy[S, T] {
-	var lastCallTime time.Time
+	var nextCallTime time.Time
 	m := sync.Mutex{}
 
 	return func(ctx context.Context, f func(context.Context, S) (T, error), s S) (T, error) {
 		m.Lock()
 		now := time.Now()
 
-		if now.Before(lastCallTime) {
+		if now.Before(nextCallTime) {
 			m.Unlock()
 			var zero T
 			return zero, ErrDebounced
 		}
-		lastCallTime = now.Add(d)
+		nextCallTime = now.Add(d)
 		m.Unlock()
 
 		return f(ctx, s)
