@@ -8,9 +8,9 @@ import (
 
 func TestCircuitBreaker(t *testing.T) {
 	t.Run("should return circuit broken error when failure threshold reached", func(t *testing.T) {
-		failureThreshold := 1
+		threshold := 1
 		breakDuration := 2 * time.Second
-		cb := ConsecutiveFailuresCircuitBreaker[int](failureThreshold, breakDuration, RejectOnError)
+		cb := ConsecutiveFailuresCircuitBreaker[int](threshold, breakDuration, RejectOnError)
 		policy := NewCircuitBreakerPolicy[string, int](cb)
 		f := func(ctx context.Context, s string) (int, error) {
 			return 0, errSomethingWentWrong
